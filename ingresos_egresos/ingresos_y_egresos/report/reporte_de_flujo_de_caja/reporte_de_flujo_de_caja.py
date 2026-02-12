@@ -76,7 +76,7 @@ def get_data(filters):
 		AND fecha_de_registro BETWEEN %s AND %s
 		{condiciones}
 		GROUP BY sucursal, fecha_de_registro, vinculado
-		ORDER BY sucursal, fecha_de_registro ASC
+		ORDER BY fecha_de_registro ASC, sucursal ASC
 	""", (filters.get("from_date"), filters.get("to_date")), as_dict=1)
 
 	# Calcular Saldo Inicial (antes de la fecha 'from_date')
