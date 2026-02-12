@@ -20,6 +20,12 @@ def get_columns():
 			"width": 120
 		},
 		{
+			"label": _("Estado"),
+			"fieldname": "estado",
+			"fieldtype": "Data",
+			"width": 100
+		},
+		{
 			"label": _("Entradas"),
 			"fieldname": "ingresos",
 			"fieldtype": "Currency",
@@ -50,29 +56,33 @@ def get_data(filters):
 	if filters.get("sucursal"):
 		condiciones += f" AND sucursal = '{filters.get('sucursal')}'"
 	
-	# Obtener movimientos agrupados por fecha
+	# Obtener movimientos agrupados por fecha y estado de vinculación
 	movimientos = frappe.db.sql(f"""
 		SELECT 
 			fecha_de_registro as fecha,
+            CASE WHEN vinculado = 1 THEN 'Cerrado' ELSE 'Pendiente' END as estado,
 			SUM(CASE WHEN tipo = 'Ingreso' THEN importe ELSE 0 END) as ingresos,
 			SUM(CASE WHEN tipo = 'Egreso' THEN importe ELSE 0 END) as egresos
 		FROM `tabMovimiento`
-		WHERE docstatus = 1
-		AND fecha_de_registro BETWEEN '{filters.get("from_date")}' AND '{filters.get("to_date")}'
+		WHERE docstatus < 2
+		AND fecha_de_registro BETWEEN %s AND %s
 		{condiciones}
-		GROUP BY fecha_de_registro
+		GROUP BY fecha_de_registro, vinculado
 		ORDER BY fecha_de_registro ASC
-	""", as_dict=1)
+	""", (filters.get("from_date"), filters.get("to_date")), as_dict=1)
 
 	# Calcular Saldo Inicial (antes de la fecha 'from_date')
+	# Incluimos históricos tanto cerrados como pendientes si están antes del periodo?
+    # Generalmente el saldo inicial se basa en lo consolidado, pero si queremos proyectar flujo...
+    # Para ser consistentes con el dashboard, incluiremos docstatus < 2
 	saldo_inicial = frappe.db.sql(f"""
 		SELECT 
 			SUM(CASE WHEN tipo = 'Ingreso' THEN importe ELSE -importe END) as saldo
 		FROM `tabMovimiento`
-		WHERE docstatus = 1
-		AND fecha_de_registro < '{filters.get("from_date")}'
+		WHERE docstatus < 2
+		AND fecha_de_registro < %s
 		{condiciones}
-	""", as_dict=1)[0].saldo or 0.0
+	""", (filters.get("from_date")), as_dict=1)[0].saldo or 0.0
 
 	data = []
 	saldo_acumulado = flt(saldo_inicial)
@@ -93,6 +103,7 @@ def get_data(filters):
 		
 		data.append({
 			"fecha": row.fecha,
+            "estado": _(row.estado),
 			"ingresos": flt(row.ingresos),
 			"egresos": flt(row.egresos),
 			"neto": neto,
@@ -102,7 +113,7 @@ def get_data(filters):
 	return data
 
 def get_chart(data):
-	labels = [d.get("fecha") for d in data]
+	labels = [f"{d.get('fecha')} ({d.get('estado')})" for d in data]
 	ingresos = [d.get("ingresos") for d in data]
 	egresos = [d.get("egresos") for d in data]
 	saldo = [d.get("saldo_acumulado") for d in data]

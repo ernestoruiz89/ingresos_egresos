@@ -34,7 +34,8 @@ def execute(filters=None):
             "clasificacion",
             "referencia",
             "importe",
-            "descripcion"
+            "descripcion",
+            "vinculado"
         ],
         order_by="fecha_de_registro ASC"
     )
@@ -48,7 +49,11 @@ def execute(filters=None):
         {"label": "Clasificación", "fieldname": "clasificacion", "fieldtype": "Data", "width": 120},
         {"label": "Referencia", "fieldname": "referencia", "fieldtype": "Data", "width": 200},
         {"label": "Importe", "fieldname": "importe", "fieldtype": "Currency", "width": 120},
+        {"label": "Estado", "fieldname": "estado", "fieldtype": "Data", "width": 100},
         {"label": "Descripción", "fieldname": "descripcion", "fieldtype": "Text", "width": 200},
     ]
+
+    for mov in movimientos:
+        mov["estado"] = "Cerrado" if mov.get("vinculado") else "Pendiente"
 
     return columns, movimientos
