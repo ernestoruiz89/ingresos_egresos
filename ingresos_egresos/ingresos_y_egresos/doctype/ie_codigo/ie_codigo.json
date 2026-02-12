@@ -1,0 +1,50 @@
+{
+ "actions": [],
+ "autoname": "field:code_name",
+ "creation": "2024-12-17 18:13:05.626407",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "code_name",
+  "code_values"
+ ],
+ "fields": [
+  {
+   "fieldname": "code_name",
+   "fieldtype": "Data",
+   "label": "Code Name",
+   "unique": 1
+  },
+  {
+   "fieldname": "code_values",
+   "fieldtype": "Table",
+   "label": "Code Values",
+   "options": "IE Codigo Detalle"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-12-17 18:18:38.853789",
+ "modified_by": "Administrator",
+ "module": "Ingresos y Egresos",
+ "name": "IE Codigo",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

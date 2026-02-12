@@ -1,0 +1,50 @@
+import frappe
+from frappe.model.document import Document
+from frappe.utils import getdate
+
+class Movimiento(Document):
+    def validate(self):
+        # Verificar que la sucursal y la fecha de registro estén definidas
+        if not self.sucursal or not self.fecha_de_registro:
+            frappe.throw("Debe definir una sucursal y una fecha de registro.")
+
+        # Asegurar objeto date
+        fecha_de_registro = getdate(self.fecha_de_registro)
+
+        # 1. Validar que la fecha no sea anterior al primer cierre
+        # Obtenemos solo la fecha del primer cierre para esta sucursal
+        primer_cierre_fecha = frappe.db.get_value(
+            "Registro de Cierre de Movimiento",
+            filters={"sucursal": self.sucursal, "docstatus": 1},
+            fieldname="fecha_inicio",
+            order_by="fecha_inicio asc"
+        )
+
+        if primer_cierre_fecha:
+            primer_cierre_fecha = getdate(primer_cierre_fecha)
+            if fecha_de_registro < primer_cierre_fecha:
+                frappe.throw(
+                    f"No se puede agregar el movimiento porque la fecha {fecha_de_registro} es anterior al primer cierre "
+                    f"realizado ({primer_cierre_fecha})."
+                )
+
+        # 2. Validar que la fecha no esté incluida en un cierre existente
+        # Buscamos si existe UN cierre que cubra esta fecha. frappe.db.exists no soporta filtros complejos facilmente en todas las versiones
+        # pero get_value con filtros de rango es eficiente.
+        cierre_existente = frappe.db.get_value(
+            "Registro de Cierre de Movimiento",
+            filters={
+                "sucursal": self.sucursal,
+                "docstatus": 1,
+                "fecha_inicio": ["<=", fecha_de_registro],
+                "fecha_final": [">=", fecha_de_registro]
+            },
+            fieldname=["name", "fecha_inicio", "fecha_final"],
+            as_dict=True
+        )
+
+        if cierre_existente:
+            frappe.throw(
+                f"No se puede agregar el movimiento porque la fecha {fecha_de_registro} está incluida en el cierre {cierre_existente.name} "
+                f"({cierre_existente.fecha_inicio} - {cierre_existente.fecha_final})."
+            )

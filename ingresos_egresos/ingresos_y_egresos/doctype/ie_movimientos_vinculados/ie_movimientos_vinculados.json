@@ -1,0 +1,58 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-12-17 22:24:34.058239",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "registro",
+  "fecha",
+  "clasificaci\u00f3n",
+  "importe",
+  "descripcion"
+ ],
+ "fields": [
+  {
+   "fieldname": "registro",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Registro",
+   "options": "Movimiento"
+  },
+  {
+   "fieldname": "fecha",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Fecha"
+  },
+  {
+   "fieldname": "clasificaci\u00f3n",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Clasificaci\u00f3n"
+  },
+  {
+   "fieldname": "importe",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Importe"
+  },
+  {
+   "fieldname": "descripcion",
+   "fieldtype": "Small Text",
+   "label": "Descripcion"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2024-12-17 23:09:25.386173",
+ "modified_by": "Administrator",
+ "module": "Ingresos y Egresos",
+ "name": "IE Movimientos Vinculados",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

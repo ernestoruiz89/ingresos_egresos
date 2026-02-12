@@ -1,0 +1,54 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-12-17 18:09:49.251718",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "code_value",
+  "description",
+  "cuenta_contable",
+  "active"
+ ],
+ "fields": [
+  {
+   "fieldname": "code_value",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Code Value",
+   "reqd": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Description"
+  },
+  {
+   "default": "1",
+   "fieldname": "active",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Active"
+  },
+  {
+   "fieldname": "cuenta_contable",
+   "fieldtype": "Link",
+   "label": "Cuenta Contable",
+   "options": "Account"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2024-12-17 22:10:04.605190",
+ "modified_by": "Administrator",
+ "module": "Ingresos y Egresos",
+ "name": "IE Codigo Detalle",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
