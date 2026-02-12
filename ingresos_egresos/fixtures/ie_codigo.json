@@ -1,0 +1,125 @@
+[
+    {
+        "name": "Egreso",
+        "code_name": "Egreso",
+        "doctype": "IE Codigo",
+        "code_values": [
+            {
+                "code_value": "Agua Potable",
+                "active": 1
+            },
+            {
+                "code_value": "Aseo y Limpieza",
+                "active": 1
+            },
+            {
+                "code_value": "Capacitaciones",
+                "active": 1
+            },
+            {
+                "code_value": "Cargos Bancarios",
+                "active": 1
+            },
+            {
+                "code_value": "Celebraciones y Convivios",
+                "active": 1
+            },
+            {
+                "code_value": "Combustibles y Lubricantes",
+                "active": 1
+            },
+            {
+                "code_value": "Comedor",
+                "active": 1
+            },
+            {
+                "code_value": "Comisiones",
+                "active": 1
+            },
+            {
+                "code_value": "Compra de Activos",
+                "active": 1
+            },
+            {
+                "code_value": "Comunicación",
+                "active": 1
+            },
+            {
+                "code_value": "Desembolso de Créditos",
+                "active": 1
+            },
+            {
+                "code_value": "Energía Eléctrica",
+                "active": 1
+            },
+            {
+                "code_value": "Gastos Legales",
+                "active": 1
+            },
+            {
+                "code_value": "Impuestos",
+                "active": 1
+            },
+            {
+                "code_value": "Internet",
+                "active": 1
+            },
+            {
+                "code_value": "Otros Egresos",
+                "active": 1
+            },
+            {
+                "code_value": "Pago de Intereses a Acreedor",
+                "active": 1
+            },
+            {
+                "code_value": "Pago de Préstamo a Acreedor",
+                "active": 1
+            },
+            {
+                "code_value": "Papelería, Útiles y Arreglos",
+                "active": 1
+            },
+            {
+                "code_value": "Prestamo entre Empresas",
+                "active": 1
+            },
+            {
+                "code_value": "Rep. y Mant. de Local",
+                "active": 1
+            },
+            {
+                "code_value": "Rep. y Mant. de Vehículos",
+                "active": 1
+            },
+            {
+                "code_value": "Rep. y Mant. Equipos",
+                "active": 1
+            },
+            {
+                "code_value": "Salario",
+                "active": 1
+            },
+            {
+                "code_value": "Servicios Contables",
+                "active": 1
+            },
+            {
+                "code_value": "Traslado a otra Sucursal",
+                "active": 1
+            },
+            {
+                "code_value": "Víaticos de Alimentación",
+                "active": 1
+            },
+            {
+                "code_value": "Viáticos de Transporte",
+                "active": 1
+            },
+            {
+                "code_value": "Vigilancia",
+                "active": 1
+            }
+        ]
+    }
+]
