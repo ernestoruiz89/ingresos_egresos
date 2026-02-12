@@ -134,11 +134,11 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
 
     // --- 3. Funciones de Botones ---
     page.wrapper.find('#btn-registrar-entrada').on('click', function () {
-        show_quick_entry_dialog('Entrada');
+        show_quick_entry_dialog('Ingreso');
     });
 
     page.wrapper.find('#btn-registrar-salida').on('click', function () {
-        show_quick_entry_dialog('Salida');
+        show_quick_entry_dialog('Egreso');
     });
 
     page.wrapper.find('#btn-realizar-cierre').on('click', function () {
@@ -226,7 +226,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
         }
 
         movimientos.forEach(mov => {
-            let badge_class = mov.tipo === 'Entrada' ? 'badge-success' : 'badge-danger';
+            let badge_class = mov.tipo === 'Ingreso' ? 'badge-success' : 'badge-danger';
             let estado = mov.vinculado ? '<span class="badge badge-secondary">Cerrado</span>' : '<span class="badge badge-info">Pendiente</span>';
 
             let row = `<tr>

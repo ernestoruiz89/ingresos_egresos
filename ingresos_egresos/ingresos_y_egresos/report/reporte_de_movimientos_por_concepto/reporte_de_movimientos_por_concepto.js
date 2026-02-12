@@ -7,8 +7,8 @@ frappe.query_reports["Reporte de Movimientos por Concepto"] = {
             "fieldname": "type",
             "label": __("Tipo Movimiento"),
             "fieldtype": "Select",
-            "options": "\nEntrada\nSalida",
-            "default": "Salida", // Por defecto salidas para ver gastos
+            "options": "\nIngreso\nEgreso",
+            "default": "Egreso", // Por defecto salidas para ver gastos
             "reqd": 0
         },
         {

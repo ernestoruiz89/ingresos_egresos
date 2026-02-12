@@ -54,8 +54,8 @@ def get_data(filters):
 	movimientos = frappe.db.sql(f"""
 		SELECT 
 			fecha_de_registro as fecha,
-			SUM(CASE WHEN tipo = 'Entrada' THEN importe ELSE 0 END) as ingresos,
-			SUM(CASE WHEN tipo = 'Salida' THEN importe ELSE 0 END) as egresos
+			SUM(CASE WHEN tipo = 'Ingreso' THEN importe ELSE 0 END) as ingresos,
+			SUM(CASE WHEN tipo = 'Egreso' THEN importe ELSE 0 END) as egresos
 		FROM `tabMovimiento`
 		WHERE docstatus = 1
 		AND fecha_de_registro BETWEEN '{filters.get("from_date")}' AND '{filters.get("to_date")}'
@@ -67,7 +67,7 @@ def get_data(filters):
 	# Calcular Saldo Inicial (antes de la fecha 'from_date')
 	saldo_inicial = frappe.db.sql(f"""
 		SELECT 
-			SUM(CASE WHEN tipo = 'Entrada' THEN importe ELSE -importe END) as saldo
+			SUM(CASE WHEN tipo = 'Ingreso' THEN importe ELSE -importe END) as saldo
 		FROM `tabMovimiento`
 		WHERE docstatus = 1
 		AND fecha_de_registro < '{filters.get("from_date")}'

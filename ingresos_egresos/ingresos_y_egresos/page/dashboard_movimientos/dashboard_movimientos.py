@@ -40,12 +40,12 @@ def get_dashboard_data(sucursal=None, from_date=None, to_date=None):
     # Totales detallados
     totales_raw = frappe.db.sql(f"""
         SELECT 
-            SUM(CASE WHEN tipo = 'Entrada' THEN importe ELSE 0 END) as total_ingresos,
-            SUM(CASE WHEN tipo = 'Salida' THEN importe ELSE 0 END) as total_egresos,
-            SUM(CASE WHEN tipo = 'Entrada' AND vinculado = 1 THEN importe ELSE 0 END) as vinculados_ingresos,
-            SUM(CASE WHEN tipo = 'Salida' AND vinculado = 1 THEN importe ELSE 0 END) as vinculados_egresos,
-            SUM(CASE WHEN tipo = 'Entrada' AND vinculado = 0 THEN importe ELSE 0 END) as pendientes_ingresos,
-            SUM(CASE WHEN tipo = 'Salida' AND vinculado = 0 THEN importe ELSE 0 END) as pendientes_egresos
+            SUM(CASE WHEN tipo = 'Ingreso' THEN importe ELSE 0 END) as total_ingresos,
+            SUM(CASE WHEN tipo = 'Egreso' THEN importe ELSE 0 END) as total_egresos,
+            SUM(CASE WHEN tipo = 'Ingreso' AND vinculado = 1 THEN importe ELSE 0 END) as vinculados_ingresos,
+            SUM(CASE WHEN tipo = 'Egreso' AND vinculado = 1 THEN importe ELSE 0 END) as vinculados_egresos,
+            SUM(CASE WHEN tipo = 'Ingreso' AND vinculado = 0 THEN importe ELSE 0 END) as pendientes_ingresos,
+            SUM(CASE WHEN tipo = 'Egreso' AND vinculado = 0 THEN importe ELSE 0 END) as pendientes_egresos
         FROM `tabMovimiento`
         WHERE 1=1 {condiciones_sql}
     """, tuple(parametros), as_dict=True)[0]
