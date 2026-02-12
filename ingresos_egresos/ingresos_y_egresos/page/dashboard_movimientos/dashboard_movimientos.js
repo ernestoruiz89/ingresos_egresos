@@ -144,8 +144,9 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
 								<tr>
 									<th>Fecha</th>
 									<th>Tipo</th>
-									<th>Concepto</th>
+									<th>Clasificación</th>
                                     <th>Referencia</th>
+                                    <th>Descripción</th>
 									<th>Monto</th>
 									<th>Estado</th>
                                     <th>Acciones</th>
@@ -288,6 +289,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
 				<td><span class="badge ${badge_class}">${mov.tipo}</span></td>
 				<td>${mov.clasificacion || ''}</td>
                 <td>${mov.referencia || ''}</td>
+                <td>${mov.descripcion || ''}</td>
 				<td class="text-right font-weight-bold">${format_currency(mov.importe)}</td>
 				<td>${estado}</td>
                 <td class="text-center">${btn_action}</td>

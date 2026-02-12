@@ -96,7 +96,7 @@ def get_dashboard_data(sucursal=None, from_date=None, to_date=None):
     movimientos_preview = frappe.get_all(
         "Movimiento",
         filters=filtros,
-        fields=["name", "fecha_de_registro", "tipo", "clasificacion", "importe", "vinculado"],
+        fields=["name", "fecha_de_registro", "tipo", "clasificacion", "importe", "vinculado", "referencia", "descripcion"],
         order_by="fecha_de_registro desc, creation desc",
         limit_page_length=10
     )
