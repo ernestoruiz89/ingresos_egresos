@@ -193,9 +193,11 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
         }
 
         if (!sucursal) {
-            $('#kpi-ingresos').html("$ 0.00");
-            $('#kpi-egresos').html("$ 0.00");
-            $('#table-movimientos tbody').html('<tr><td colspan="5" class="text-center">Seleccione una sucursal para ver datos</td></tr>');
+            $('#kpi-ingresos').html(format_currency(0));
+            $('#kpi-egresos').html(format_currency(0));
+            $('#kpi-saldo-anterior').html(format_currency(0));
+            $('#kpi-saldo').html(format_currency(0));
+            $('#table-movimientos tbody').html('<tr><td colspan="6" class="text-center">Seleccione una sucursal para ver datos</td></tr>');
             return;
         }
 
