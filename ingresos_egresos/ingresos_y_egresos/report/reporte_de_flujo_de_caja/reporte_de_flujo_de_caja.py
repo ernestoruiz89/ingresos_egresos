@@ -104,10 +104,10 @@ def get_data(filters):
 		data.append({
 			"fecha": row.fecha,
             "estado": _(row.estado),
-			"ingresos": flt(row.ingresos),
-			"egresos": flt(row.egresos),
-			"neto": neto,
-			"saldo_acumulado": saldo_acumulado
+			"ingresos": flt(row.ingresos, 2),
+			"egresos": flt(row.egresos, 2),
+			"neto": flt(neto, 2),
+			"saldo_acumulado": flt(saldo_acumulado, 2)
 		})
 
 	return data
@@ -140,5 +140,8 @@ def get_chart(data):
 			]
 		},
 		"type": "axis-mixed", # Permite combinar barras y líneas
-		"colors": ["#28a745", "#dc3545", "#007bff"]
+		"colors": ["#28a745", "#dc3545", "#007bff"],
+		"tooltipOptions": {
+			"formatTooltipY": "d => d.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"
+		}
 	}

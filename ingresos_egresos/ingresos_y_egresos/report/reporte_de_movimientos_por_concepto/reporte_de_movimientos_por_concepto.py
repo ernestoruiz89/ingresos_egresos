@@ -75,6 +75,7 @@ def get_data(filters):
 	# Calcular %
 	total_general = sum([flt(d.total) for d in data])
 	for row in data:
+		row["total"] = flt(row.total, 2)
 		if total_general > 0:
 			row["percentage"] = flt((flt(row.total) / total_general) * 100, 1)
 		else:
@@ -98,5 +99,8 @@ def get_chart(data, filters):
 		},
 		"type": "donut", # Donut chart es mejor para participacion
 		"height": 300,
-		"colors": ["#456789", "#EC8D71", "#333333", "#E09C2C", "#683226"] # Palette example
+		"colors": ["#456789", "#EC8D71", "#333333", "#E09C2C", "#683226"], # Palette example
+		"tooltipOptions": {
+			"formatTooltipY": "d => d.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"
+		}
 	}
