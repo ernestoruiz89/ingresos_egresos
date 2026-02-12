@@ -13,6 +13,27 @@ frappe.ui.form.on('Movimiento', {
             frm.page.set_primary_action(__('Save'), () => frm.save());
 
             if (!frm.is_new()) {
+                // Agregar botón de eliminar en rojo para movimientos no vinculados
+                if (!frm.doc.vinculado) {
+                    frm.page.add_inner_button(__('Eliminar Registro'), function () {
+                        frappe.confirm('¿Está seguro de que desea eliminar este registro?', () => {
+                            frappe.call({
+                                method: 'frappe.client.delete',
+                                args: {
+                                    doctype: 'Movimiento',
+                                    name: frm.doc.name
+                                },
+                                callback: function (r) {
+                                    if (!r.exc) {
+                                        frappe.show_alert({ message: __('Registro eliminado'), indicator: 'green' });
+                                        frappe.set_route('List', 'Movimiento');
+                                    }
+                                }
+                            });
+                        });
+                    }).addClass('btn-danger').css({ 'color': 'white', 'font-weight': 'bold' });
+                }
+
                 frm.set_intro(__('Este movimiento debe ser procesado mediante un <a href="/app/List/Registro%20de%20Cierre%20de%20Movimiento" style="font-weight:bold">Cierre de Movimientos</a> para ser finalizado.'), 'blue');
             }
         }

@@ -7,6 +7,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
 
     // Guardamos referencia al wrapper
     page.wrapper = $(wrapper);
+    page.opening_dialog = false;
 
     // --- 0. Helper: Cargar Filtros Guardados ---
     let saved_filters = JSON.parse(localStorage.getItem('dashboard_movimientos_filters') || '{}');
@@ -344,17 +345,21 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
     }
 
     function show_quick_entry_dialog(tipo) {
+        if (page.opening_dialog || (cur_dialog && cur_dialog.display)) return;
+
         let sucursal = get_sucursal();
         if (!sucursal) {
             frappe.msgprint("Por favor, seleccione una sucursal primero.");
             return;
         }
 
+        page.opening_dialog = true;
         // Obtener opciones de clasificación primero
         frappe.call({
             method: 'ingresos_egresos.ingresos_y_egresos.doctype.movimiento.movimiento.get_code_name_options',
             args: { code_name: tipo },
             callback: function (r_opts) {
+                page.opening_dialog = false;
                 let clasif_options = r_opts.message || [];
 
                 let d = new frappe.ui.Dialog({
@@ -455,12 +460,16 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
     }
 
     function show_edit_dialog(name, read_only) {
+        if (page.opening_dialog || (cur_dialog && cur_dialog.display)) return;
+        page.opening_dialog = true;
+
         frappe.db.get_doc('Movimiento', name).then(doc => {
             // Obtener opciones de clasificación
             frappe.call({
                 method: 'ingresos_egresos.ingresos_y_egresos.doctype.movimiento.movimiento.get_code_name_options',
                 args: { code_name: doc.tipo },
                 callback: function (r_opts) {
+                    page.opening_dialog = false;
                     let clasif_options = r_opts.message || [];
 
                     // Obtener adjuntos existentes
@@ -548,6 +557,25 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                                 title: read_only ? `Ver ${doc.tipo}` : `Editar ${doc.tipo}`,
                                 fields: fields,
                                 primary_action_label: read_only ? null : 'Guardar Cambios',
+                                secondary_action_label: read_only ? null : 'Eliminar Registro',
+                                secondary_action: function () {
+                                    frappe.confirm('¿Está seguro de que desea eliminar este registro?', () => {
+                                        frappe.call({
+                                            method: 'frappe.client.delete',
+                                            args: {
+                                                doctype: 'Movimiento',
+                                                name: doc.name
+                                            },
+                                            callback: function (r) {
+                                                if (!r.exc) {
+                                                    frappe.show_alert({ message: __('Registro eliminado'), indicator: 'green' });
+                                                    d.hide();
+                                                    refresh_dashboard();
+                                                }
+                                            }
+                                        });
+                                    });
+                                },
                                 primary_action: function (values) {
                                     if (!read_only) {
                                         frappe.call({
@@ -585,6 +613,10 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                                     }
                                 }
                             });
+
+                            if (!read_only) {
+                                d.get_secondary_btn().addClass('btn-danger').css('color', 'white');
+                            }
 
                             // Renderizar Archivos Existentes
                             let $attach_wrapper = d.fields_dict.existing_attachments.$wrapper;
@@ -750,12 +782,15 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
     }
 
     function realizar_cierre() {
+        if (page.opening_dialog || (cur_dialog && cur_dialog.display)) return;
+
         let sucursal = get_sucursal();
         if (!sucursal) {
             frappe.msgprint("Seleccione una sucursal primero");
             return;
         }
 
+        page.opening_dialog = true;
         frappe.call({
             method: 'frappe.client.get_value',
             args: {
@@ -770,6 +805,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                 if (r_cierre.message && r_cierre.message.fecha_final) {
                     // Caso 1: Hay un cierre previo -> Fecha Inicio = Cierre Previo + 1 día
                     suggested_start_date = frappe.datetime.add_days(r_cierre.message.fecha_final, 1);
+                    page.opening_dialog = false;
                     show_cierre_dialog(sucursal, suggested_start_date);
                 } else {
                     // Caso 2: No hay cierre previo -> Buscar el movimiento abierto más antiguo
@@ -782,6 +818,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                             order_by: 'fecha_de_registro asc'
                         },
                         callback: function (r_mov) {
+                            page.opening_dialog = false;
                             if (r_mov.message && r_mov.message.fecha_de_registro) {
                                 suggested_start_date = r_mov.message.fecha_de_registro;
                             }
