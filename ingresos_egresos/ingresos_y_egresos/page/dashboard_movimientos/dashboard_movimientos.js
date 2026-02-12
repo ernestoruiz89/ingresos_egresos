@@ -196,8 +196,16 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
 
         // Actualizar detalles (breakdown)
         if (totales.detalles) {
-            $('#kpi-ingresos-detail').text(`Vinc: ${format_currency(totales.detalles.ingresos_vinc)} | Pend: ${format_currency(totales.detalles.ingresos_pend)}`);
-            $('#kpi-egresos-detail').text(`Vinc: ${format_currency(totales.detalles.egresos_vinc)} | Pend: ${format_currency(totales.detalles.egresos_pend)}`);
+            let i_vinc = format_currency(totales.detalles.ingresos_vinc);
+            let i_pend = format_currency(totales.detalles.ingresos_pend);
+            let e_vinc = format_currency(totales.detalles.egresos_vinc);
+            let e_pend = format_currency(totales.detalles.egresos_pend);
+
+            $('#kpi-ingresos-detail').html(`Vinc: ${i_vinc} | Pend: ${i_pend}`);
+            $('#kpi-egresos-detail').html(`Vinc: ${e_vinc} | Pend: ${e_pend}`);
+
+            // Forzar que los divs internos sean inline para que no rompan la línea
+            $('#kpi-ingresos-detail div, #kpi-egresos-detail div').css('display', 'inline');
         }
 
         if (totales.saldo < 0) {
