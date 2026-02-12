@@ -498,7 +498,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                         $attach_wrapper.find('.btn-delete-file').on('click', function () {
                             let file_name = $(this).data('name');
                             frappe.confirm('¿Eliminar este archivo adjunto?', () => {
-                                frappe.client.delete("File", file_name).then(() => {
+                                frappe.delete_doc("File", file_name, function () {
                                     $attach_wrapper.find(`#file-${file_name}`).remove();
                                     frappe.show_alert('Archivo eliminado');
                                 });
