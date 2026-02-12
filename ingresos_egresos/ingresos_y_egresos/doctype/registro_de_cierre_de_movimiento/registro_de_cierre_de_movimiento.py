@@ -89,6 +89,90 @@ class RegistrodeCierredeMovimiento(Document):
                 frappe.throw(
                     f"No se puede hacer un cierre antes del primer cierre registrado ({primer_cierre_fecha})."
                 )
+        
+        # Poblar tablas y calcular totales automáticamente
+        self.poblar_y_calcular()
+
+    def poblar_y_calcular(self):
+        # Solo poblar y calcular si es un borrador. 
+        # Si ya está sometido (1) o cancelado (2), no tocamos las tablas.
+        if self.docstatus != 0:
+            return
+
+        # Limpiar tablas actuales para regenerarlas según el rango
+        self.set("ingresos", [])
+        self.set("egresos", [])
+        
+        # Buscar movimientos pendientes (vinculado=0) en el rango y sucursal
+        # Si el documento ya fue "sometido" (docstatus=1), los movimientos ya están vinculados a este cierre
+        # pero validate no suele correr en docstatus=1 salvo en on_submit.
+        # Asumimos que esto corre principalmente en borrador (docstatus=0).
+        
+        filtros = {
+            "sucursal": self.sucursal,
+            "docstatus": 1,
+            "fecha_de_registro": ["between", [self.fecha_inicio, self.fecha_final]],
+            "vinculado": 0 
+        }
+
+        movs = frappe.get_all("Movimiento", filters=filtros, fields=["name", "fecha_de_registro", "clasificacion", "importe", "descripcion", "tipo"])
+        
+        total_ing = 0.0
+        total_egr = 0.0
+
+        for m in movs:
+            row = {
+                "registro": m.name,
+                "fecha": m.fecha_de_registro,
+                "clasificación": m.clasificacion, # Nota: campo con tilde en tabla hija
+                "importe": m.importe,
+                "descripcion": m.descripcion
+            }
+            
+            if m.tipo == "Ingreso":
+                self.append("ingresos", row)
+                total_ing += flt(m.importe)
+            elif m.tipo == "Egreso":
+                self.append("egresos", row)
+                total_egr += flt(m.importe)
+        
+        self.total_ingresos = total_ing
+        self.total_egresos = total_egr
+
+        # --- Calculo de Saldo Final ---
+        # Saldo Final = Saldo Anterior + Ingresos Actuales - Egresos Actuales
+        
+        saldo_anterior = 0.0
+
+        # 1. Buscar último cierre anterior a este
+        ultimo_cierre = frappe.db.get_value(
+            "Registro de Cierre de Movimiento",
+            filters={
+                "sucursal": self.sucursal,
+                "docstatus": 1,
+                "fecha_final": ["<", self.fecha_inicio]
+            },
+            fieldname="saldo_final",
+            order_by="fecha_final desc"
+        )
+
+        if ultimo_cierre is not None:
+            saldo_anterior = flt(ultimo_cierre)
+        else:
+            # 2. Si no hay cierre previo, calcular histórico desde el principio hasta antes de fecha_inicio
+            # Sumar todos los Ingresos - Egresos anteriores a este periodo
+            hist_moves = frappe.db.sql("""
+                SELECT SUM(CASE WHEN tipo = 'Ingreso' THEN importe ELSE -importe END)
+                FROM `tabMovimiento`
+                WHERE sucursal = %s
+                AND docstatus = 1
+                AND fecha_de_registro < %s
+            """, (self.sucursal, self.fecha_inicio))
+            
+            if hist_moves and hist_moves[0][0]:
+                saldo_anterior = flt(hist_moves[0][0])
+
+        self.saldo_final = saldo_anterior + self.total_ingresos - self.total_egresos
 
     def on_submit(self):
         # Validar datos mínimos

@@ -57,8 +57,40 @@ def get_dashboard_data(sucursal=None, from_date=None, to_date=None):
             if is_vinc: v_egresos += val
             else: p_egresos += val
 
-    # Saldo actual total
-    saldo_total = t_ingresos - t_egresos
+    # Calculo de Saldo Inicial y Final
+    saldo_inicial = 0.0
+
+    if from_date:
+        # 1. Buscar cierre anterior a la fecha de inicio
+        cierre_previo = frappe.db.get_value(
+            "Registro de Cierre de Movimiento",
+            filters={
+                "sucursal": sucursal,
+                "docstatus": 1,
+                "fecha_final": ["<", from_date]
+            },
+            fieldname="saldo_final",
+            order_by="fecha_final desc"
+        )
+
+        if cierre_previo:
+            saldo_inicial = flt(cierre_previo)
+        else:
+            # 2. Si no hay cierre previo, calcular histórico de movimientos anteriores
+            # Esto es necesario si se filtra desde una fecha intermedia sin cierres previos
+            hist_moves = frappe.db.sql("""
+                SELECT SUM(CASE WHEN tipo = 'Ingreso' THEN importe ELSE -importe END)
+                FROM `tabMovimiento`
+                WHERE sucursal = %s
+                AND docstatus = 1
+                AND fecha_de_registro < %s
+            """, (sucursal, from_date))
+            
+            if hist_moves and hist_moves[0][0]:
+                saldo_inicial = flt(hist_moves[0][0])
+    
+    # Saldo actual total = Saldo Inicial + (Ingresos del periodo - Egresos del periodo)
+    saldo_total = saldo_inicial + t_ingresos - t_egresos
 
     # Últimos 10 movimientos (para la vista previa de la tabla)
     movimientos_preview = frappe.get_all(
