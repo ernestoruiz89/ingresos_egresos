@@ -151,9 +151,9 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
     }
 
     function update_kpis(totales) {
-        $('#kpi-ingresos').text(format_currency(totales.ingresos));
-        $('#kpi-egresos').text(format_currency(totales.egresos));
-        $('#kpi-saldo').text(format_currency(totales.saldo));
+        $('#kpi-ingresos').html(format_currency(totales.ingresos));
+        $('#kpi-egresos').html(format_currency(totales.egresos));
+        $('#kpi-saldo').html(format_currency(totales.saldo));
 
         if (totales.saldo < 0) {
             $('#kpi-saldo').css('color', '#dc3545');
