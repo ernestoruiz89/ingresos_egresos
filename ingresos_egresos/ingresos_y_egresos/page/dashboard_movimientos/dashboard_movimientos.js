@@ -806,7 +806,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                     // Caso 1: Hay un cierre previo -> Fecha Inicio = Cierre Previo + 1 día
                     suggested_start_date = frappe.datetime.add_days(r_cierre.message.fecha_final, 1);
                     page.opening_dialog = false;
-                    show_cierre_dialog(sucursal, suggested_start_date);
+                    show_cierre_dialog(sucursal, suggested_start_date, true);
                 } else {
                     // Caso 2: No hay cierre previo -> Buscar el movimiento abierto más antiguo
                     frappe.call({
@@ -822,7 +822,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                             if (r_mov.message && r_mov.message.fecha_de_registro) {
                                 suggested_start_date = r_mov.message.fecha_de_registro;
                             }
-                            show_cierre_dialog(sucursal, suggested_start_date);
+                            show_cierre_dialog(sucursal, suggested_start_date, false);
                         }
                     });
                 }
@@ -830,7 +830,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
         });
     }
 
-    function show_cierre_dialog(sucursal, start_date) {
+    function show_cierre_dialog(sucursal, start_date, has_previous_closure) {
         let d = new frappe.ui.Dialog({
             title: 'Realizar Cierre de Movimientos',
             fields: [
@@ -847,7 +847,8 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                     fieldname: 'fecha_inicio',
                     fieldtype: 'Date',
                     default: start_date,
-                    reqd: 1
+                    reqd: 1,
+                    read_only: has_previous_closure ? 1 : 0
                 },
                 {
                     label: 'Fecha Final',
@@ -858,7 +859,9 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                 },
                 {
                     fieldtype: 'HTML',
-                    options: '<p class="text-muted small">Esto vinculará todos los movimientos pendientes en el rango de fechas seleccionado.</p>'
+                    options: `<p class="text-muted small">${has_previous_closure ?
+                        'La fecha de inicio está bloqueada para dar continuidad al último cierre.' :
+                        'Esto vinculará todos los movimientos pendientes en el rango de fechas seleccionado.'}</p>`
                 }
             ],
             primary_action_label: 'Generar Cierre',

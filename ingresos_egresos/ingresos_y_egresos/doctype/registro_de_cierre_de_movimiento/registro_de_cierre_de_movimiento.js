@@ -1,10 +1,10 @@
 frappe.ui.form.on("Registro de Cierre de Movimiento", {
-	setup: function(frm){
-		frm.ignore_doctypes_on_cancel_all = ["Movimiento"];
-	},
-	
-	onload: function (frm) {
-        if (!frm.doc.__islocal) return;		
+    setup: function (frm) {
+        frm.ignore_doctypes_on_cancel_all = ["Movimiento"];
+    },
+
+    onload: function (frm) {
+        if (!frm.doc.__islocal) return;
 
         // Obtener el último cierre registrado para la sucursal seleccionada
         if (frm.doc.sucursal) {
@@ -22,6 +22,25 @@ frappe.ui.form.on("Registro de Cierre de Movimiento", {
                         let ultimo_cierre = r.message[0];
                         let nueva_fecha_inicio = frappe.datetime.add_days(ultimo_cierre.fecha_final, 1);
                         frm.set_value("fecha_inicio", nueva_fecha_inicio);
+                        frm.set_df_property("fecha_inicio", "read_only", 1);
+                    } else {
+                        // Caso 2: No hay cierre previo -> Buscar el movimiento pendiente más antiguo
+                        frappe.call({
+                            method: "frappe.client.get_list",
+                            args: {
+                                doctype: "Movimiento",
+                                filters: { sucursal: frm.doc.sucursal, vinculado: 0, docstatus: ["<", 2] },
+                                fields: ["fecha_de_registro"],
+                                order_by: "fecha_de_registro asc",
+                                limit_page_length: 1
+                            },
+                            callback: function (r_mov) {
+                                if (r_mov.message && r_mov.message.length > 0) {
+                                    frm.set_value("fecha_inicio", r_mov.message[0].fecha_de_registro);
+                                }
+                                frm.set_df_property("fecha_inicio", "read_only", 0);
+                            }
+                        });
                     }
                 }
             });
@@ -31,7 +50,7 @@ frappe.ui.form.on("Registro de Cierre de Movimiento", {
         // Volver a calcular la fecha inicial si cambia la sucursal
         frm.trigger("onload");
     },
-	
+
     actualizar_movimientos: function (frm) {
         if (!frm.doc.sucursal) {
             frappe.msgprint("Por favor, seleccione una sucursal antes de actualizar los movimientos.");
