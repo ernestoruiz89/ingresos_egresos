@@ -7,7 +7,8 @@
             </div>
             <div class="col-xs-4 text-right">
                 <h4 style="margin: 0;">{{ doc.name }}</h4>
-                <p style="font-size: 12px; color: #777;">Fecha Impresión: {{ frappe.utils.format_date(frappe.utils.nowdate(), "dd-MM-yyyy") }}</p>
+                <p style="font-size: 12px; color: #333;">Fecha Impresión: {{
+                    frappe.utils.format_date(frappe.utils.nowdate(), "dd-MM-yyyy") }}</p>
                 <div style="margin-top: 5px;">
                     {% if doc.docstatus == 0 %}<span class="label label-default">Borrador</span>{% endif %}
                     {% if doc.docstatus == 1 %}<span class="label label-success">Cerrado</span>{% endif %}
@@ -21,13 +22,13 @@
         <table class="table table-bordered table-condensed">
             <tbody>
                 <tr>
-                    <td style="width: 25%; background-color: #f9f9f9;"><strong>Fecha Inicio:</strong></td>
+                    <td style="width: 25%; background-color: #eee;"><strong>Fecha Inicio:</strong></td>
                     <td style="width: 25%;">{{ frappe.utils.format_date(doc.fecha_inicio, "dd-MM-yyyy") }}</td>
-                    <td style="width: 25%; background-color: #f9f9f9;"><strong>Fecha Final:</strong></td>
+                    <td style="width: 25%; background-color: #eee;"><strong>Fecha Final:</strong></td>
                     <td style="width: 25%;">{{ frappe.utils.format_date(doc.fecha_final, "dd-MM-yyyy") }}</td>
                 </tr>
                 <tr>
-                    <td style="background-color: #f9f9f9;"><strong>Responsable:</strong></td>
+                    <td style="background-color: #eee;"><strong>Responsable:</strong></td>
                     <td colspan="3">{{ doc.owner }}</td>
                 </tr>
             </tbody>
@@ -50,9 +51,12 @@
                 {% set saldo_anterior = doc.saldo_final - doc.total_ingresos + doc.total_egresos %}
                 <tr>
                     <td class="text-right" style="font-size: 16px;">{{ frappe.utils.fmt_money(saldo_anterior) }}</td>
-                    <td class="text-right text-success" style="font-size: 16px; color: #28a745;">{{ frappe.utils.fmt_money(doc.total_ingresos) }}</td>
-                    <td class="text-right text-danger" style="font-size: 16px; color: #dc3545;">{{ frappe.utils.fmt_money(doc.total_egresos) }}</td>
-                    <td class="text-right" style="font-size: 18px; font-weight: bold; background-color: #f0f8ff;">{{ frappe.utils.fmt_money(doc.saldo_final) }}</td>
+                    <td class="text-right text-success" style="font-size: 16px; color: #28a745;">{{
+                        frappe.utils.fmt_money(doc.total_ingresos) }}</td>
+                    <td class="text-right text-danger" style="font-size: 16px; color: #dc3545;">{{
+                        frappe.utils.fmt_money(doc.total_egresos) }}</td>
+                    <td class="text-right" style="font-size: 18px; font-weight: bold; background-color: #f0f8ff;">{{
+                        frappe.utils.fmt_money(doc.saldo_final) }}</td>
                 </tr>
             </tbody>
         </table>
@@ -61,7 +65,8 @@
     <!-- Detalle de Movimientos -->
     <div class="details-section">
         <!-- Ingresos -->
-        <h4 style="margin-top: 20px; border-bottom: 1px solid #ddd; padding-bottom: 5px; color: #28a745;">Detalle de Ingresos</h4>
+        <h4 style="margin-top: 20px; border-bottom: 1px solid #ddd; padding-bottom: 5px; color: #28a745;">Detalle de
+            Ingresos</h4>
         {% if doc.ingresos %}
         <table class="table table-condensed table-striped" style="font-size: 12px;">
             <thead>
@@ -85,7 +90,7 @@
                 {% endfor %}
             </tbody>
             <tfoot>
-                <tr style="font-weight: bold; background-color: #f9f9f9;">
+                <tr style="font-weight: bold; background-color: #eee;">
                     <td colspan="4" class="text-right">Total Ingresos:</td>
                     <td class="text-right">{{ frappe.utils.fmt_money(doc.total_ingresos) }}</td>
                 </tr>
@@ -96,7 +101,8 @@
         {% endif %}
 
         <!-- Egresos -->
-        <h4 style="margin-top: 30px; border-bottom: 1px solid #ddd; padding-bottom: 5px; color: #dc3545;">Detalle de Egresos</h4>
+        <h4 style="margin-top: 30px; border-bottom: 1px solid #ddd; padding-bottom: 5px; color: #dc3545;">Detalle de
+            Egresos</h4>
         {% if doc.egresos %}
         <table class="table table-condensed table-striped" style="font-size: 12px;">
             <thead>
@@ -120,7 +126,7 @@
                 {% endfor %}
             </tbody>
             <tfoot>
-                <tr style="font-weight: bold; background-color: #f9f9f9;">
+                <tr style="font-weight: bold; background-color: #eee;">
                     <td colspan="4" class="text-right">Total Egresos:</td>
                     <td class="text-right">{{ frappe.utils.fmt_money(doc.total_egresos) }}</td>
                 </tr>
@@ -138,14 +144,14 @@
             <div class="col-xs-4 text-center">
                 <div style="border-top: 1px solid #333; padding-top: 10px;">
                     <p style="margin-bottom: 0;"><strong>{{ doc.owner }}</strong></p>
-                    <p class="text-muted small">Elaborado Por</p>
+                    <p style="font-size: 11px; color: #333;">Elaborado Por</p>
                 </div>
             </div>
             <div class="col-xs-2"></div>
             <div class="col-xs-4 text-center">
                 <div style="border-top: 1px solid #333; padding-top: 10px;">
                     <p style="margin-bottom: 0;"><strong>__________________________</strong></p>
-                    <p class="text-muted small">Revisado y Aprobado</p>
+                    <p style="font-size: 11px; color: #333;">Revisado y Aprobado</p>
                 </div>
             </div>
             <div class="col-xs-1"></div>
