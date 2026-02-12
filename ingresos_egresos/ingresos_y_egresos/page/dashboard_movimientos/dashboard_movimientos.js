@@ -8,6 +8,14 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
     // Guardamos referencia al wrapper
     page.wrapper = $(wrapper);
 
+    // --- 0. Helper: Cargar Filtros Guardados ---
+    let saved_filters = JSON.parse(localStorage.getItem('dashboard_movimientos_filters') || '{}');
+    let route_opts = frappe.route_options || {};
+
+    let def_sucursal = route_opts.sucursal || saved_filters.sucursal;
+    let def_desde = route_opts.from_date || saved_filters.from_date;
+    let def_hasta = route_opts.to_date || saved_filters.to_date || frappe.datetime.get_today();
+
     // --- 1. Agregar Filtros ---
     page.sucursal_field = page.add_field({
         fieldname: 'sucursal',
@@ -15,7 +23,6 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
         fieldtype: 'Link',
         options: 'Branch',
         change: function () {
-            // Cuando cambia sucursal, primero refrescamos para obtener el último cierre
             refresh_dashboard(true);
         }
     });
@@ -24,6 +31,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
         fieldname: 'fecha_desde',
         label: 'Desde',
         fieldtype: 'Date',
+        default: def_desde,
         change: function () {
             refresh_dashboard();
         }
@@ -33,7 +41,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
         fieldname: 'fecha_hasta',
         label: 'Hasta',
         fieldtype: 'Date',
-        default: frappe.datetime.get_today(),
+        default: def_hasta,
         change: function () {
             refresh_dashboard();
         }
@@ -45,19 +53,31 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
         args: {
             doctype: "Branch",
             fields: ["name"],
-            limit_page_length: 2 // Solo necesitamos saber si hay 1 o más
+            limit_page_length: 50
         },
         callback: function (r) {
-            if (r.message && r.message.length === 1) {
-                // Si solo tiene acceso a una, la seleccionamos y bloqueamos el campo
-                page.sucursal_field.set_input(r.message[0].name);
+            let branches = r.message || [];
+            if (branches.length === 1) {
+                // Solo una sucursal permitida
+                page.sucursal_field.set_input(branches[0].name);
                 page.sucursal_field.$input.prop('disabled', true);
-                refresh_dashboard();
-            } else if (frappe.defaults.get_user_default("Branch")) {
-                // Si tiene acceso a varias pero tiene un default, lo ponemos (sin bloquear)
-                page.sucursal_field.set_input(frappe.defaults.get_user_default("Branch"));
-                refresh_dashboard();
+            } else {
+                // Varias sucursales: intentar usar guardada, URL o default
+                let target_branch = def_sucursal || frappe.defaults.get_user_default("Branch");
+
+                // Verificar permisos sobre la target_branch (si está en la lista retornada)
+                // Nota: get_list filtra por permisos, así que si está en 'branches', tenemos permiso.
+                let branch_exists = branches.find(b => b.name === target_branch);
+
+                if (branch_exists) {
+                    page.sucursal_field.set_input(target_branch);
+                } else if (branches.length > 0) {
+                    // Si la guardada no es válida, usar la primera disponible
+                    page.sucursal_field.set_input(branches[0].name);
+                }
             }
+            // Primera carga
+            refresh_dashboard();
         }
     });
 
@@ -162,6 +182,15 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
         let sucursal = page.sucursal_field.get_value();
         let from_date = page.desde_field.get_value();
         let to_date = page.hasta_field.get_value();
+
+        // Guardar persistencia de filtros
+        if (sucursal) {
+            localStorage.setItem('dashboard_movimientos_filters', JSON.stringify({
+                sucursal: sucursal,
+                from_date: from_date,
+                to_date: to_date
+            }));
+        }
 
         if (!sucursal) {
             $('#kpi-ingresos').html("$ 0.00");
