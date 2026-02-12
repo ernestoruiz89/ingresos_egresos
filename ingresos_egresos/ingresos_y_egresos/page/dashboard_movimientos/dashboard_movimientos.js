@@ -505,6 +505,44 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
             return;
         }
 
+        frappe.call({
+            method: 'frappe.client.get_value',
+            args: {
+                doctype: 'Registro de Cierre de Movimiento',
+                filters: { sucursal: sucursal, docstatus: 1 },
+                fieldname: 'fecha_final',
+                order_by: 'fecha_final desc'
+            },
+            callback: function (r_cierre) {
+                let suggested_start_date = frappe.datetime.get_today();
+                
+                if (r_cierre.message && r_cierre.message.fecha_final) {
+                     // Caso 1: Hay un cierre previo -> Fecha Inicio = Cierre Previo + 1 día
+                     suggested_start_date = frappe.datetime.add_days(r_cierre.message.fecha_final, 1);
+                     show_cierre_dialog(sucursal, suggested_start_date);
+                } else {
+                     // Caso 2: No hay cierre previo -> Buscar el movimiento abierto más antiguo
+                     frappe.call({
+                         method: 'frappe.client.get_value',
+                         args: {
+                             doctype: 'Movimiento',
+                             filters: { sucursal: sucursal, vinculado: 0, docstatus: ['<', 2] },
+                             fieldname: 'fecha_de_registro',
+                             order_by: 'fecha_de_registro asc'
+                         },
+                         callback: function(r_mov) {
+                             if(r_mov.message && r_mov.message.fecha_de_registro) {
+                                 suggested_start_date = r_mov.message.fecha_de_registro;
+                             }
+                             show_cierre_dialog(sucursal, suggested_start_date);
+                         }
+                     });
+                }
+            }
+        });
+    }
+
+    function show_cierre_dialog(sucursal, start_date) {
         let d = new frappe.ui.Dialog({
             title: 'Realizar Cierre de Movimientos',
             fields: [
@@ -520,7 +558,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                     label: 'Fecha Inicio',
                     fieldname: 'fecha_inicio',
                     fieldtype: 'Date',
-                    default: frappe.datetime.get_today(),
+                    default: start_date,
                     reqd: 1
                 },
                 {
