@@ -11,7 +11,7 @@ def get_dashboard_data(sucursal=None, from_date=None, to_date=None):
     if not frappe.has_permission("Branch", "read", sucursal):
          frappe.throw(_("No tiene permisos para acceder a la sucursal seleccionada."))
 
-    # 1. Obtener fecha del último cierre para esta sucursal (siempre necesario para sugerir 'Desde')
+    # 1. Obtener fecha del último cierre para esta sucursal (necesario para sugerir 'Desde')
     ultimo_cierre = frappe.db.get_value(
         "Registro de Cierre de Movimiento",
         filters={"sucursal": sucursal, "docstatus": 1},
@@ -19,44 +19,51 @@ def get_dashboard_data(sucursal=None, from_date=None, to_date=None):
         order_by="fecha_final desc"
     )
 
-    # 2. Construir condiciones para las consultas
-    # Si se pasan fechas, las usamos. Si no, mostramos todo lo pendiente (vinculado=0)
-    condiciones_sql = "AND sucursal = %s AND docstatus = 1"
-    parametros = [sucursal]
-
-    filtros_get_all = {
+    # 2. Construir filtros para frappe.get_all
+    filtros = {
         "sucursal": sucursal,
         "docstatus": 1
     }
 
     if from_date and to_date:
-        condiciones_sql += " AND fecha_de_registro BETWEEN %s AND %s"
-        parametros.extend([from_date, to_date])
-        filtros_get_all["fecha_de_registro"] = ["between", [from_date, to_date]]
+        filtros["fecha_de_registro"] = ["between", [from_date, to_date]]
     
-    # Si no hay fechas, traemos todo (vinculados + no vinculados) para la sucursal
-    # No agregamos el filtro de 'vinculado = 0' aquí para permitir el total solicitado
+    # 3. Obtener todos los movimientos filtrados para calcular totales (KPIs)
+    # Al usar frappe.get_all aquí y en la tabla, los datos DEBEN coincidir
+    todos_los_movimientos = frappe.get_all(
+        "Movimiento",
+        filters=filtros,
+        fields=["tipo", "importe", "vinculado"]
+    )
 
-    # Totales detallados
-    totales_raw = frappe.db.sql(f"""
-        SELECT 
-            SUM(CASE WHEN tipo = 'Ingreso' THEN importe ELSE 0 END) as total_ingresos,
-            SUM(CASE WHEN tipo = 'Egreso' THEN importe ELSE 0 END) as total_egresos,
-            SUM(CASE WHEN tipo = 'Ingreso' AND vinculado = 1 THEN importe ELSE 0 END) as vinculados_ingresos,
-            SUM(CASE WHEN tipo = 'Egreso' AND vinculado = 1 THEN importe ELSE 0 END) as vinculados_egresos,
-            SUM(CASE WHEN tipo = 'Ingreso' AND vinculado = 0 THEN importe ELSE 0 END) as pendientes_ingresos,
-            SUM(CASE WHEN tipo = 'Egreso' AND vinculado = 0 THEN importe ELSE 0 END) as pendientes_egresos
-        FROM `tabMovimiento`
-        WHERE 1=1 {condiciones_sql}
-    """, tuple(parametros), as_dict=True)[0]
+    t_ingresos = 0
+    t_egresos = 0
+    v_ingresos = 0
+    v_egresos = 0
+    p_ingresos = 0
+    p_egresos = 0
+
+    for m in todos_los_movimientos:
+        val = flt(m.importe)
+        tipo = m.tipo
+        is_vinc = m.vinculado
+
+        if tipo == "Ingreso":
+            t_ingresos += val
+            if is_vinc: v_ingresos += val
+            else: p_ingresos += val
+        elif tipo == "Egreso":
+            t_egresos += val
+            if is_vinc: v_egresos += val
+            else: p_egresos += val
 
     # Saldo actual total
-    saldo_total = flt(totales_raw.total_ingresos) - flt(totales_raw.total_egresos)
+    saldo_total = t_ingresos - t_egresos
 
-    # Últimos 10 movimientos
-    movimientos = frappe.get_all(
+    # Últimos 10 movimientos (para la vista previa de la tabla)
+    movimientos_preview = frappe.get_all(
         "Movimiento",
-        filters=filtros_get_all,
+        filters=filtros,
         fields=["name", "fecha_de_registro", "tipo", "clasificacion", "importe", "vinculado"],
         order_by="fecha_de_registro desc, creation desc",
         limit_page_length=10
@@ -68,15 +75,15 @@ def get_dashboard_data(sucursal=None, from_date=None, to_date=None):
             "ultimo_cierre": ultimo_cierre
         },
         "totales": {
-            "ingresos": flt(totales_raw.total_ingresos),
-            "egresos": flt(totales_raw.total_egresos),
+            "ingresos": t_ingresos,
+            "egresos": t_egresos,
             "saldo": saldo_total,
             "detalles": {
-                "ingresos_vinc": flt(totales_raw.vinculados_ingresos),
-                "ingresos_pend": flt(totales_raw.pendientes_ingresos),
-                "egresos_vinc": flt(totales_raw.vinculados_egresos),
-                "egresos_pend": flt(totales_raw.pendientes_egresos)
+                "ingresos_vinc": v_ingresos,
+                "ingresos_pend": p_ingresos,
+                "egresos_vinc": v_egresos,
+                "egresos_pend": p_egresos
             }
         },
-        "movimientos": movimientos
+        "movimientos": movimientos_preview
     }
