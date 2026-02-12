@@ -14,6 +14,13 @@ def execute(filters=None):
 def get_columns():
 	return [
 		{
+			"label": _("Sucursal"),
+			"fieldname": "sucursal",
+			"fieldtype": "Link",
+			"options": "Branch",
+			"width": 120
+		},
+		{
 			"label": _("Fecha"),
 			"fieldname": "fecha",
 			"fieldtype": "Date",
@@ -56,9 +63,10 @@ def get_data(filters):
 	if filters.get("sucursal"):
 		condiciones += f" AND sucursal = '{filters.get('sucursal')}'"
 	
-	# Obtener movimientos agrupados por fecha y estado de vinculación
+	# Obtener movimientos agrupados por sucursal, fecha y estado de vinculación
 	movimientos = frappe.db.sql(f"""
 		SELECT 
+			sucursal,
 			fecha_de_registro as fecha,
             CASE WHEN vinculado = 1 THEN 'Cerrado' ELSE 'Pendiente' END as estado,
 			SUM(CASE WHEN tipo = 'Ingreso' THEN importe ELSE 0 END) as ingresos,
@@ -67,8 +75,8 @@ def get_data(filters):
 		WHERE docstatus < 2
 		AND fecha_de_registro BETWEEN %s AND %s
 		{condiciones}
-		GROUP BY fecha_de_registro, vinculado
-		ORDER BY fecha_de_registro ASC
+		GROUP BY sucursal, fecha_de_registro, vinculado
+		ORDER BY sucursal, fecha_de_registro ASC
 	""", (filters.get("from_date"), filters.get("to_date")), as_dict=1)
 
 	# Calcular Saldo Inicial (antes de la fecha 'from_date')
@@ -102,6 +110,7 @@ def get_data(filters):
 		saldo_acumulado += neto
 		
 		data.append({
+			"sucursal": row.sucursal,
 			"fecha": row.fecha,
             "estado": _(row.estado),
 			"ingresos": flt(row.ingresos, 2),

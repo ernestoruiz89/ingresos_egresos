@@ -14,6 +14,13 @@ def execute(filters=None):
 def get_columns():
 	return [
 		{
+			"label": _("Sucursal"),
+			"fieldname": "sucursal",
+			"fieldtype": "Link",
+			"options": "Branch",
+			"width": 120
+		},
+		{
 			"label": _("Clasificación"),
 			"fieldname": "clasificacion",
 			"fieldtype": "Data",
@@ -53,9 +60,10 @@ def get_data(filters):
 	if filters.get("type"):
 		condiciones += f" AND tipo = '{filters.get('type')}'"
 
-	# Obtener datos agrupados por Clasificación y Estado de Vinculación
+	# Obtener datos agrupados por Sucursal, Clasificación y Estado de Vinculación
 	data = frappe.db.sql(f"""
 		SELECT 
+			sucursal,
 			clasificacion, 
             CASE WHEN vinculado = 1 THEN 'Cerrado' ELSE 'Pendiente' END as estado,
 			COUNT(*) as cantidad, 
@@ -64,8 +72,8 @@ def get_data(filters):
 		WHERE docstatus < 2
 		AND fecha_de_registro BETWEEN %s AND %s
 		{condiciones}
-		GROUP BY clasificacion, vinculado
-		ORDER BY total DESC
+		GROUP BY sucursal, clasificacion, vinculado
+		ORDER BY sucursal, total DESC
 	""", (filters.get("from_date"), filters.get("to_date")), as_dict=1)
 
 	# Traducir estados
