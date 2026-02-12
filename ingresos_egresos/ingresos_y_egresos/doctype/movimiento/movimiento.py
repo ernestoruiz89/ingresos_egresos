@@ -48,3 +48,18 @@ class Movimiento(Document):
                 f"No se puede agregar el movimiento porque la fecha {fecha_de_registro} está incluida en el cierre {cierre_existente.name} "
                 f"({cierre_existente.fecha_inicio} - {cierre_existente.fecha_final})."
             )
+
+@frappe.whitelist()
+def get_code_name_options(code_name):
+    if not code_name:
+        return []
+    
+    sql_query = """
+        SELECT cv.code_value
+        FROM `tabIE Codigo` c
+        INNER JOIN `tabIE Codigo Detalle` cv ON c.name = cv.parent
+        WHERE c.code_name = %s AND cv.active = 1
+        ORDER BY cv.idx ASC
+    """
+    options = frappe.db.sql(sql_query, (code_name), as_dict=True)
+    return [option.code_value for option in options]
