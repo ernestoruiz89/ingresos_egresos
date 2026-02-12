@@ -121,5 +121,28 @@
                 "active": 1
             }
         ]
+    },
+    {
+        "name": "Ingreso",
+        "code_name": "Ingreso",
+        "doctype": "IE Codigo",
+        "code_values": [
+            {
+                "code_value": "Financiamiento Recibido",
+                "active": 1
+            },
+            {
+                "code_value": "Otros Ingresos",
+                "active": 1
+            },
+            {
+                "code_value": "Recuperaciones",
+                "active": 1
+            },
+            {
+                "code_value": "Traslado Recibido",
+                "active": 1
+            }
+        ]
     }
 ]
