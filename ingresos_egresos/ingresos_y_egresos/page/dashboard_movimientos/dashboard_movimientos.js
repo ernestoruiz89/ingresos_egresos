@@ -66,23 +66,30 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
 		<div class="dashboard-container" style="padding: 20px;">
 			<!-- Sección de Tarjetas KPI -->
 			<div class="row" style="margin-bottom: 30px;">
-				<div class="col-md-4">
+				<div class="col-md-3">
+					<div class="dashboard-card-bg" style="background: #e2e3e5; padding: 20px; border-radius: 8px; border: 1px solid #d6d8db;">
+						<h5 style="color: #383d41;">Saldo Anterior</h5>
+						<h2 id="kpi-saldo-anterior" style="font-weight: bold; margin-top: 10px;">$ 0.00</h2>
+						<div style="font-size: 11px; visibility: hidden;">&nbsp;</div>
+					</div>
+				</div>
+                <div class="col-md-3">
 					<div class="dashboard-card-bg" style="background: #d4edda; padding: 20px; border-radius: 8px; border: 1px solid #c3e6cb;">
 						<h5 style="color: #155724;">Total Ingresos</h5>
 						<h2 id="kpi-ingresos" style="font-weight: bold; margin-top: 10px;">$ 0.00</h2>
 						<div id="kpi-ingresos-detail" style="font-size: 11px; color: #155724; opacity: 0.8;"></div>
 					</div>
 				</div>
-				<div class="col-md-4">
+				<div class="col-md-3">
 					<div class="dashboard-card-bg" style="background: #f8d7da; padding: 20px; border-radius: 8px; border: 1px solid #f5c6cb;">
 						<h5 style="color: #721c24;">Total Egresos</h5>
 						<h2 id="kpi-egresos" style="font-weight: bold; margin-top: 10px;">$ 0.00</h2>
 						<div id="kpi-egresos-detail" style="font-size: 11px; color: #721c24; opacity: 0.8;"></div>
 					</div>
 				</div>
-				<div class="col-md-4">
-					<div class="dashboard-card-bg" style="background: #e2e3e5; padding: 20px; border-radius: 8px; border: 1px solid #d6d8db;">
-						<h5 style="color: #383d41;">Saldo Actual</h5>
+				<div class="col-md-3">
+					<div class="dashboard-card-bg" style="background: #cce5ff; padding: 20px; border-radius: 8px; border: 1px solid #b8daff;">
+						<h5 style="color: #004085;">Saldo Actual</h5>
 						<h2 id="kpi-saldo" style="font-weight: bold; margin-top: 10px;">$ 0.00</h2>
 						<div style="font-size: 11px; visibility: hidden;">&nbsp;</div>
 					</div>
@@ -192,6 +199,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
     }
 
     function update_kpis(totales) {
+        $('#kpi-saldo-anterior').html(format_currency(totales.saldo_anterior));
         $('#kpi-ingresos').html(format_currency(totales.ingresos));
         $('#kpi-egresos').html(format_currency(totales.egresos));
         $('#kpi-saldo').html(format_currency(totales.saldo));
@@ -211,9 +219,15 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
         }
 
         if (totales.saldo < 0) {
-            $('#kpi-saldo').css('color', '#dc3545');
+            $('#kpi-saldo').css('color', '#dc3545'); // Rojo si negativo
         } else {
-            $('#kpi-saldo').css('color', '#28a745');
+            $('#kpi-saldo').css('color', '#004085'); // Azul del tema si positivo
+        }
+
+        if (totales.saldo_anterior < 0) {
+            $('#kpi-saldo-anterior').css('color', '#dc3545');
+        } else {
+            $('#kpi-saldo-anterior').css('color', '#383d41');
         }
     }
 

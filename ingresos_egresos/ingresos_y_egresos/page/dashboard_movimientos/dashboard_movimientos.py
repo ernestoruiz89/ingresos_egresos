@@ -110,6 +110,7 @@ def get_dashboard_data(sucursal=None, from_date=None, to_date=None):
             "ingresos": t_ingresos,
             "egresos": t_egresos,
             "saldo": saldo_total,
+            "saldo_anterior": saldo_inicial,
             "detalles": {
                 "ingresos_vinc": v_ingresos,
                 "ingresos_pend": p_ingresos,
