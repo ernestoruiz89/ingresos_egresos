@@ -76,7 +76,7 @@ def get_data(filters):
 	total_general = sum([flt(d.total) for d in data])
 	for row in data:
 		if total_general > 0:
-			row["percentage"] = (flt(row.total) / total_general) * 100
+			row["percentage"] = flt((flt(row.total) / total_general) * 100, 1)
 		else:
 			row["percentage"] = 0
 
