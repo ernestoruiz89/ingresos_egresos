@@ -893,7 +893,8 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
             freeze_message: 'Procesando Cierre...',
             callback: function (r) {
                 if (!r.exc) {
-                    frappe.msgprint(`Cierre ${r.message.name} realizado correctamente.`);
+                    let doc_link = frappe.utils.get_form_link(r.message.doctype, r.message.name);
+                    frappe.msgprint(`Cierre ${doc_link} realizado correctamente.`);
                     dialog.hide();
                     refresh_dashboard();
                 }

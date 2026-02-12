@@ -189,8 +189,8 @@ class RegistrodeCierredeMovimiento(Document):
 
         if count == 0:
             frappe.msgprint(
-                "No se encontraron movimientos para el rango de fechas seleccionado. "
-                "Se registrará el cierre de todos modos."
+                f"No se encontraron movimientos para el rango de fechas seleccionado. "
+                f"Se registró el cierre: {self.get_title_auth()}"
             )
         else:
             # Actualización masiva (SQL es más eficiente para updates por rango)
@@ -204,7 +204,11 @@ class RegistrodeCierredeMovimiento(Document):
                 AND vinculado = 0
             """, (self.name, self.sucursal, self.fecha_inicio, self.fecha_final))
 
-            frappe.msgprint(f"Se actualizaron {count} movimientos vinculados al cierre.")
+            frappe.msgprint(f"Se actualizaron {count} movimientos vinculados al cierre {self.get_title_auth()}.")
+
+    def get_title_auth(self):
+        from frappe.utils import get_link_to_form
+        return get_link_to_form(self.doctype, self.name)
 
     def on_cancel(self):
         self.ignore_linked_doctypes = ["Movimiento"]
