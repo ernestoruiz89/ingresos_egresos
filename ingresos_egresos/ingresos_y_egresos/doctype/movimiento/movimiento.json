@@ -1,128 +1,135 @@
 {
-    "actions": [],
-    "allow_rename": 1,
-    "autoname": "format:MV-{sucursal}-{#####}",
-    "creation": "2024-12-17 18:19:55.823722",
-    "doctype": "DocType",
-    "engine": "InnoDB",
-    "field_order": [
-        "section_break_xcfy",
-        "sucursal",
-        "fecha_de_registro",
-        "tipo",
-        "clasificacion",
-        "column_break_jtol",
-        "referencia",
-        "importe",
-        "section_break_jkrc",
-        "descripcion",
-        "vinculado",
-        "amended_from",
-        "cierre"
-    ],
-    "fields": [
-        {
-            "fieldname": "section_break_xcfy",
-            "fieldtype": "Section Break"
-        },
-        {
-            "fieldname": "amended_from",
-            "fieldtype": "Link",
-            "label": "Amended From",
-            "no_copy": 1,
-            "options": "Movimiento",
-            "print_hide": 1,
-            "read_only": 1,
-            "search_index": 1
-        },
-        {
-            "default": "Today",
-            "fieldname": "fecha_de_registro",
-            "fieldtype": "Date",
-            "label": "Fecha de Registro"
-        },
-        {
-            "fieldname": "tipo",
-            "fieldtype": "Select",
-            "label": "Tipo",
-            "options": "Ingreso\nEgreso"
-        },
-        {
-            "fieldname": "clasificacion",
-            "fieldtype": "Select",
-            "label": "Clasificaci\u00f3n"
-        },
-        {
-            "fieldname": "column_break_jtol",
-            "fieldtype": "Column Break"
-        },
-        {
-            "fieldname": "referencia",
-            "fieldtype": "Data",
-            "label": "Referencia"
-        },
-        {
-            "fieldname": "importe",
-            "fieldtype": "Float",
-            "label": "Importe"
-        },
-        {
-            "fieldname": "section_break_jkrc",
-            "fieldtype": "Section Break"
-        },
-        {
-            "fieldname": "descripcion",
-            "fieldtype": "Small Text",
-            "label": "Descripci\u00f3n"
-        },
-        {
-            "fieldname": "sucursal",
-            "fieldtype": "Link",
-            "label": "Sucursal",
-            "options": "Branch"
-        },
-        {
-            "allow_on_submit": 1,
-            "default": "0",
-            "fieldname": "vinculado",
-            "fieldtype": "Check",
-            "label": "Vinculado a Cierre",
-            "read_only": 1
-        },
-        {
-            "allow_on_submit": 1,
-            "fieldname": "cierre",
-            "fieldtype": "Link",
-            "label": "Cierre",
-            "options": "Registro de Cierre de Movimiento",
-            "read_only": 1
-        }
-    ],
-    "index_web_pages_for_search": 1,
-    "is_submittable": 1,
-    "links": [],
-    "modified": "2024-12-17 23:19:34.809834",
-    "modified_by": "Administrator",
-    "module": "Ingresos y Egresos",
-    "name": "Movimiento",
-    "naming_rule": "Expression",
-    "owner": "Administrator",
-    "permissions": [
-        {
-            "create": 1,
-            "delete": 1,
-            "email": 1,
-            "export": 1,
-            "print": 1,
-            "read": 1,
-            "report": 1,
-            "role": "System Manager",
-            "share": 1,
-            "submit": 1,
-            "write": 1
-        }
-    ],
-    "sort_field": "modified",
-    "sort_order": "DESC",
-    "states": []
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:MV-{sucursal}-{#####}",
+ "creation": "2024-12-17 18:19:55.823722",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_xcfy",
+  "sucursal",
+  "fecha_de_registro",
+  "tipo",
+  "clasificacion",
+  "column_break_jtol",
+  "referencia",
+  "importe",
+  "section_break_jkrc",
+  "descripcion",
+  "vinculado",
+  "amended_from",
+  "cierre"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_xcfy",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Movimiento",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "fecha_de_registro",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Fecha de Registro"
+  },
+  {
+   "fieldname": "tipo",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Tipo",
+   "options": "Ingreso\nEgreso"
+  },
+  {
+   "fieldname": "clasificacion",
+   "fieldtype": "Select",
+   "label": "Clasificaci\u00f3n"
+  },
+  {
+   "fieldname": "column_break_jtol",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "referencia",
+   "fieldtype": "Data",
+   "label": "Referencia"
+  },
+  {
+   "fieldname": "importe",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Importe"
+  },
+  {
+   "fieldname": "section_break_jkrc",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "descripcion",
+   "fieldtype": "Small Text",
+   "label": "Descripci\u00f3n"
+  },
+  {
+   "fieldname": "sucursal",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Sucursal",
+   "options": "Branch"
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "vinculado",
+   "fieldtype": "Check",
+   "label": "Vinculado a Cierre",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "cierre",
+   "fieldtype": "Link",
+   "label": "Cierre",
+   "options": "Registro de Cierre de Movimiento",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-02-12 15:11:16.277850",
+ "modified_by": "Administrator",
+ "module": "Ingresos y Egresos",
+ "name": "Movimiento",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
 }
