@@ -63,24 +63,22 @@
   },
   {
    "hidden": 0,
-   "is_query_report": 0,
+   "is_query_report": 1,
    "label": "Reporte de Movimientos",
    "link_count": 0,
    "link_to": "Reporte de Movimientos",
    "link_type": "Report",
    "onboard": 0,
-   "report_ref_doctype": "Movimiento",
    "type": "Link"
   },
   {
    "hidden": 0,
-   "is_query_report": 0,
+   "is_query_report": 1,
    "label": "Reporte de Movimientos por Concepto",
    "link_count": 0,
    "link_to": "Reporte de Movimientos por Concepto",
    "link_type": "Report",
    "onboard": 0,
-   "report_ref_doctype": "Movimiento",
    "type": "Link"
   },
   {
@@ -94,7 +92,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-02-12 14:07:13.659355",
+ "modified": "2026-02-12 14:42:33.572938",
  "modified_by": "Administrator",
  "module": "Ingresos y Egresos",
  "name": "Ingresos y Egresos",
