@@ -6,6 +6,17 @@ frappe.ui.form.on('Movimiento', {
         if (frm.doc.docstatus === 1) return;
         get_code_name_options(frm, frm.doc.tipo);
     },
+    refresh: function (frm) {
+        if (frm.doc.docstatus === 0) {
+            // Asegurarnos de que el botón principal sea siempre "Guardar" y no "Enviar" (Submit)
+            // Ya que el envío se hace masivamente desde el doctype "Cierre de Movimiento"
+            frm.page.set_primary_action(__('Save'), () => frm.save());
+
+            if (!frm.is_new()) {
+                frm.set_intro(__('Este movimiento debe ser procesado mediante un <a href="/app/List/Registro%20de%20Cierre%20de%20Movimiento" style="font-weight:bold">Cierre de Movimientos</a> para ser finalizado.'), 'blue');
+            }
+        }
+    },
     tipo: function (frm) {
         if (frm.doc.docstatus === 1) return;
         get_code_name_options(frm, frm.doc.tipo);

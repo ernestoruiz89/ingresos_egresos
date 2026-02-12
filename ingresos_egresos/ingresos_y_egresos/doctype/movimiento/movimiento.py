@@ -49,6 +49,12 @@ class Movimiento(Document):
                 f"({cierre_existente.fecha_inicio} - {cierre_existente.fecha_final})."
             )
 
+        # 3. Validar que no se pueda enviar manualmente (docstatus=1) si no tiene 'vinculado'
+        # Nota: El proceso de Cierre utiliza SQL directo para actualizar docstatus, lo que evita llamar a validate()
+        # y permite que se marquen como enviados sin pasar por este bloqueo manual.
+        if self.docstatus == 1 and not self.vinculado:
+            frappe.throw("No se pueden enviar movimientos manualmente. Deben ser procesados mediante un Cierre de Movimientos.")
+
 @frappe.whitelist()
 def get_code_name_options(code_name):
     if not code_name:
