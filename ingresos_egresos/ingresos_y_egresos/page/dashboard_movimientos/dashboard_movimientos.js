@@ -8,12 +8,32 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
     // Guardamos referencia al wrapper
     page.wrapper = $(wrapper);
 
-    // --- 1. Agregar Filtro de Sucursal ---
+    // --- 1. Agregar Filtros ---
     page.sucursal_field = page.add_field({
         fieldname: 'sucursal',
         label: 'Sucursal',
         fieldtype: 'Link',
         options: 'Branch',
+        change: function () {
+            // Cuando cambia sucursal, primero refrescamos para obtener el último cierre
+            refresh_dashboard(true);
+        }
+    });
+
+    page.desde_field = page.add_field({
+        fieldname: 'fecha_desde',
+        label: 'Desde',
+        fieldtype: 'Date',
+        change: function () {
+            refresh_dashboard();
+        }
+    });
+
+    page.hasta_field = page.add_field({
+        fieldname: 'fecha_hasta',
+        label: 'Hasta',
+        fieldtype: 'Date',
+        default: frappe.datetime.get_today(),
         change: function () {
             refresh_dashboard();
         }
@@ -48,14 +68,16 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
 			<div class="row" style="margin-bottom: 30px;">
 				<div class="col-md-4">
 					<div class="dashboard-card-bg" style="background: #d4edda; padding: 20px; border-radius: 8px; border: 1px solid #c3e6cb;">
-						<h5 style="color: #155724;">Ingresos (Pendientes)</h5>
+						<h5 style="color: #155724;">Total Ingresos</h5>
 						<h2 id="kpi-ingresos" style="font-weight: bold; margin-top: 10px;">$ 0.00</h2>
+						<div id="kpi-ingresos-detail" style="font-size: 11px; color: #155724; opacity: 0.8;"></div>
 					</div>
 				</div>
 				<div class="col-md-4">
 					<div class="dashboard-card-bg" style="background: #f8d7da; padding: 20px; border-radius: 8px; border: 1px solid #f5c6cb;">
-						<h5 style="color: #721c24;">Egresos (Pendientes)</h5>
+						<h5 style="color: #721c24;">Total Egresos</h5>
 						<h2 id="kpi-egresos" style="font-weight: bold; margin-top: 10px;">$ 0.00</h2>
+						<div id="kpi-egresos-detail" style="font-size: 11px; color: #721c24; opacity: 0.8;"></div>
 					</div>
 				</div>
 				<div class="col-md-4">
@@ -127,11 +149,14 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
         return page.sucursal_field.get_value();
     }
 
-    function refresh_dashboard() {
-        let sucursal = get_sucursal();
+    function refresh_dashboard(is_sucursal_change = false) {
+        let sucursal = page.sucursal_field.get_value();
+        let from_date = page.desde_field.get_value();
+        let to_date = page.hasta_field.get_value();
+
         if (!sucursal) {
-            $('#kpi-ingresos').text("$ 0.00");
-            $('#kpi-egresos').text("$ 0.00");
+            $('#kpi-ingresos').html("$ 0.00");
+            $('#kpi-egresos').html("$ 0.00");
             $('#table-movimientos tbody').html('<tr><td colspan="5" class="text-center">Seleccione una sucursal para ver datos</td></tr>');
             return;
         }
@@ -139,10 +164,24 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
         frappe.call({
             method: "ingresos_egresos.ingresos_y_egresos.page.dashboard_movimientos.dashboard_movimientos.get_dashboard_data",
             args: {
-                sucursal: sucursal
+                sucursal: sucursal,
+                from_date: from_date,
+                to_date: to_date
             },
             callback: function (r) {
                 if (r.message) {
+                    // Si cambió la sucursal, actualizamos el filtro 'Desde' sugerido
+                    if (is_sucursal_change && r.message.periodo && r.message.periodo.ultimo_cierre) {
+                        let next_day = frappe.datetime.add_days(r.message.periodo.ultimo_cierre, 1);
+                        // Usamos set_input para evitar disparar el evento 'change' inmediatamente si es posible
+                        // o manejamos la recursión indirectamente. 
+                        // En Frappe, set_value/set_input suele disparar el evento.
+                        page.desde_field.set_input(next_day);
+                        // Actualizamos de nuevo con la nueva fecha para obtener datos filtrados
+                        refresh_dashboard();
+                        return;
+                    }
+
                     update_kpis(r.message.totales);
                     update_table(r.message.movimientos);
                 }
@@ -154,6 +193,12 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
         $('#kpi-ingresos').html(format_currency(totales.ingresos));
         $('#kpi-egresos').html(format_currency(totales.egresos));
         $('#kpi-saldo').html(format_currency(totales.saldo));
+
+        // Actualizar detalles (breakdown)
+        if (totales.detalles) {
+            $('#kpi-ingresos-detail').text(`Vinc: ${format_currency(totales.detalles.ingresos_vinc)} | Pend: ${format_currency(totales.detalles.ingresos_pend)}`);
+            $('#kpi-egresos-detail').text(`Vinc: ${format_currency(totales.detalles.egresos_vinc)} | Pend: ${format_currency(totales.detalles.egresos_pend)}`);
+        }
 
         if (totales.saldo < 0) {
             $('#kpi-saldo').css('color', '#dc3545');
