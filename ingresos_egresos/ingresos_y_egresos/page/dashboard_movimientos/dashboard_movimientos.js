@@ -178,8 +178,8 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
             let row = `<tr>
 				<td>${frappe.datetime.str_to_user(mov.fecha_de_registro)}</td>
 				<td><span class="badge ${badge_class}">${mov.tipo}</span></td>
-				<td>${mov.concept || ''}</td>
-				<td class="text-right font-weight-bold">${format_currency(mov.monto)}</td>
+				<td>${mov.clasificacion || ''}</td>
+				<td class="text-right font-weight-bold">${format_currency(mov.importe)}</td>
 				<td>${estado}</td>
 			</tr>`;
             tbody.append(row);
@@ -212,14 +212,14 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                     reqd: 1
                 },
                 {
-                    label: 'Concepto',
-                    fieldname: 'concept',
+                    label: 'Clasificación',
+                    fieldname: 'clasificacion',
                     fieldtype: 'Data',
                     reqd: 1
                 },
                 {
-                    label: 'Monto',
-                    fieldname: 'monto',
+                    label: 'Importe',
+                    fieldname: 'importe',
                     fieldtype: 'Currency',
                     reqd: 1
                 },
@@ -285,8 +285,8 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                     sucursal: values.sucursal,
                     tipo: values.tipo,
                     fecha_de_registro: values.fecha_de_registro,
-                    concept: values.concept,
-                    monto: values.monto,
+                    clasificacion: values.clasificacion,
+                    importe: values.importe,
                     docstatus: 1
                 }
             },

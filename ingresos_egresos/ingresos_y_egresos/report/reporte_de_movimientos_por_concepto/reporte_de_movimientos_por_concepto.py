@@ -13,8 +13,8 @@ def execute(filters=None):
 def get_columns():
 	return [
 		{
-			"label": _("Concepto"),
-			"fieldname": "concept", # Asumiendo campo 'concept' en Movimiento, si es 'clasificacion' cambiar aquí
+			"label": _("Clasificación"),
+			"fieldname": "clasificacion", # Asumiendo campo 'concept' en Movimiento, si es 'clasificacion' cambiar aquí
 			"fieldtype": "Data",
 			"width": 180
 		},
@@ -49,14 +49,14 @@ def get_data(filters):
 	# Obtener datos agrupados por Concepto
 	data = frappe.db.sql(f"""
 		SELECT 
-			concept, 
+			clasificacion, 
 			COUNT(*) as cantidad, 
-			SUM(monto) as total
+			SUM(importe) as total
 		FROM `tabMovimiento` 
 		WHERE docstatus = 1
 		AND fecha_de_registro BETWEEN '{filters.get("from_date")}' AND '{filters.get("to_date")}'
 		{condiciones}
-		GROUP BY concept
+		GROUP BY clasificacion
 		ORDER BY total DESC
 	""", as_dict=1)
 
@@ -71,7 +71,7 @@ def get_data(filters):
 	return data
 
 def get_chart(data, filters):
-	labels = [d.get("concept") or _("Sin Concepto") for d in data]
+	labels = [d.get("clasificacion") or _("Sin Clasificación") for d in data]
 	values = [d.get("total") for d in data]
 
 	return {

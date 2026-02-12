@@ -32,8 +32,8 @@ def get_dashboard_data(sucursal=None):
     # Totales (Ingresos y Egresos pendientes de cierre)
     totales = frappe.db.sql("""
         SELECT 
-            SUM(CASE WHEN tipo = 'Entrada' THEN monto ELSE 0 END) as total_ingresos,
-            SUM(CASE WHEN tipo = 'Salida' THEN monto ELSE 0 END) as total_egresos
+            SUM(CASE WHEN tipo = 'Entrada' THEN importe ELSE 0 END) as total_ingresos,
+            SUM(CASE WHEN tipo = 'Salida' THEN importe ELSE 0 END) as total_egresos
         FROM `tabMovimiento`
         WHERE sucursal = %s
         AND docstatus = 1
@@ -50,7 +50,7 @@ def get_dashboard_data(sucursal=None):
             "sucursal": sucursal,
             "docstatus": 1
         },
-        fields=["name", "fecha_de_registro", "tipo", "concept", "monto", "vinculado"],
+        fields=["name", "fecha_de_registro", "tipo", "clasificacion", "importe", "vinculado"],
         order_by="creation desc",
         limit_page_length=10
     )
