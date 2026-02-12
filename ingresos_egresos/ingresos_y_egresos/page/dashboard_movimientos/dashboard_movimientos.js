@@ -317,6 +317,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
             handle_files(e.originalEvent.dataTransfer.files);
         });
         $dropZone.on('click', function () { $fileInput.click(); });
+        $fileInput.on('click', function (e) { e.stopPropagation(); });
         $fileInput.on('change', function () { handle_files(this.files); });
 
         function handle_files(files) {
@@ -366,27 +367,45 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
     }
 
     function upload_files(doctype, docname, files, on_complete) {
-        function upload_next(index) {
-            if (index >= files.length) {
-                if (on_complete) on_complete();
-                return;
-            }
-            let file = files[index];
-            frappe.upload.upload_file(file, {
-                doctype: doctype,
-                docname: docname,
-                is_private: 1
-            }, {
-                callback: function () {
-                    upload_next(index + 1);
+        if (!files || files.length === 0) {
+            if (on_complete) on_complete();
+            return;
+        }
+
+        let uploaded = 0;
+        let total = files.length;
+
+        files.forEach(file => {
+            let formData = new FormData();
+            formData.append('file', file, file.name);
+            formData.append('doctype', doctype);
+            formData.append('docname', docname);
+            formData.append('is_private', 1);
+
+            $.ajax({
+                type: 'POST',
+                url: '/api/method/upload_file',
+                headers: {
+                    'X-Frappe-CSRF-Token': frappe.csrf_token
                 },
-                error: function () {
-                    // Continue even if error
-                    upload_next(index + 1);
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function (data) {
+                    console.log("File uploaded:", data);
+                },
+                error: function (request, status, error) {
+                    frappe.msgprint(__("Error uploading file: {0}", [file.name]));
+                    console.error(error);
+                },
+                complete: function () {
+                    uploaded++;
+                    if (uploaded === total) {
+                        if (on_complete) on_complete();
+                    }
                 }
             });
-        }
-        upload_next(0);
+        });
     }
 
     function realizar_cierre() {
