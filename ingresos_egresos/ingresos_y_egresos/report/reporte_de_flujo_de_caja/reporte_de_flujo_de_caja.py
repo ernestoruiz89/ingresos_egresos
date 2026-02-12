@@ -140,8 +140,5 @@ def get_chart(data):
 			]
 		},
 		"type": "axis-mixed", # Permite combinar barras y líneas
-		"colors": ["#28a745", "#dc3545", "#007bff"],
-		"tooltipOptions": {
-			"formatTooltipY": "d => d.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"
-		}
+		"colors": ["#28a745", "#dc3545", "#007bff"]
 	}
