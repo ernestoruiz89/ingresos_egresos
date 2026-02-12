@@ -94,9 +94,10 @@ class RegistrodeCierredeMovimiento(Document):
         self.poblar_y_calcular()
 
     def poblar_y_calcular(self):
-        # Solo poblar y calcular si es un borrador. 
-        # Si ya está sometido (1) o cancelado (2), no tocamos las tablas.
-        if self.docstatus != 0:
+        # Permitir poblar si está en Borrador (0) o Enviado (1).
+        # Si se hace un insert con docstatus=1 directo, self.docstatus ya es 1 aquí.
+        # Solo evitamos procesar si está Cancelado (2).
+        if self.docstatus == 2:
             return
 
         # Limpiar tablas actuales para regenerarlas según el rango
