@@ -83,31 +83,65 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
 
     // --- 2. Estructura del Cuerpo del Dashboard ---
     $(wrapper).find('.layout-main-section').append(`
+        <style>
+            .dashboard-card-bg {
+                margin-bottom: 15px;
+                transition: transform 0.2s;
+            }
+            .dashboard-card-bg:hover {
+                transform: translateY(-2px);
+            }
+            .quick-actions-container .btn {
+                margin-bottom: 5px;
+            }
+            @media (max-width: 767px) {
+                .dashboard-container {
+                    padding: 10px !important;
+                }
+                .quick-actions-container {
+                    flex-direction: column;
+                }
+                .quick-actions-container .btn {
+                    width: 100%;
+                    text-align: left;
+                }
+                .dashboard-card-bg h2 {
+                    font-size: 1.6rem !important;
+                }
+                .dashboard-card-bg h5 {
+                    font-size: 0.9rem !important;
+                }
+                /* Ocultar columnas menos importantes en móvil */
+                .hidden-xs {
+                    display: none !important;
+                }
+            }
+        </style>
 		<div class="dashboard-container" style="padding: 20px;">
 			<!-- Sección de Tarjetas KPI -->
-			<div class="row" style="margin-bottom: 30px;">
-				<div class="col-md-3">
+			<div class="row">
+				<div class="col-sm-6 col-md-3">
 					<div class="dashboard-card-bg" style="background: #e2e3e5; padding: 20px; border-radius: 8px; border: 1px solid #d6d8db;">
 						<h5 style="color: #383d41;">Saldo Anterior</h5>
 						<h2 id="kpi-saldo-anterior" style="font-weight: bold; margin-top: 10px;">$ 0.00</h2>
 						<div style="font-size: 11px; visibility: hidden;">&nbsp;</div>
 					</div>
 				</div>
-                <div class="col-md-3">
+                <div class="col-sm-6 col-md-3">
 					<div class="dashboard-card-bg" style="background: #d4edda; padding: 20px; border-radius: 8px; border: 1px solid #c3e6cb;">
 						<h5 style="color: #155724;">Total Ingresos</h5>
 						<h2 id="kpi-ingresos" style="font-weight: bold; margin-top: 10px;">$ 0.00</h2>
 						<div id="kpi-ingresos-detail" style="font-size: 11px; color: #155724; opacity: 0.8;"></div>
 					</div>
 				</div>
-				<div class="col-md-3">
+				<div class="col-sm-6 col-md-3">
 					<div class="dashboard-card-bg" style="background: #f8d7da; padding: 20px; border-radius: 8px; border: 1px solid #f5c6cb;">
 						<h5 style="color: #721c24;">Total Egresos</h5>
 						<h2 id="kpi-egresos" style="font-weight: bold; margin-top: 10px;">$ 0.00</h2>
 						<div id="kpi-egresos-detail" style="font-size: 11px; color: #721c24; opacity: 0.8;"></div>
 					</div>
 				</div>
-				<div class="col-md-3">
+				<div class="col-sm-6 col-md-3">
 					<div class="dashboard-card-bg" style="background: #cce5ff; padding: 20px; border-radius: 8px; border: 1px solid #b8daff;">
 						<h5 style="color: #004085;">Saldo Actual</h5>
 						<h2 id="kpi-saldo" style="font-weight: bold; margin-top: 10px;">$ 0.00</h2>
@@ -120,7 +154,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
 			<div class="row" style="margin-bottom: 30px;">
 				<div class="col-md-12">
 					<h4>Acciones Rápidas</h4>
-					<div style="display: flex; gap: 10px; margin-top: 10px;">
+					<div class="quick-actions-container" style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
 						<button class="btn btn-primary btn-lg" id="btn-registrar-entrada">
 							<span class="fa fa-plus"></span> Registrar Entrada
 						</button>
@@ -145,8 +179,8 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
 									<th>Fecha</th>
 									<th>Tipo</th>
 									<th>Clasificación</th>
-                                    <th>Referencia</th>
-                                    <th>Descripción</th>
+                                    <th class="hidden-xs">Referencia</th>
+                                    <th class="hidden-xs">Descripción</th>
 									<th>Monto</th>
 									<th>Estado</th>
                                     <th>Acciones</th>
@@ -288,8 +322,8 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
 				<td>${frappe.datetime.str_to_user(mov.fecha_de_registro)}</td>
 				<td><span class="badge ${badge_class}">${mov.tipo}</span></td>
 				<td>${mov.clasificacion || ''}</td>
-                <td>${mov.referencia || ''}</td>
-                <td>${mov.descripcion || ''}</td>
+                <td class="hidden-xs">${mov.referencia || ''}</td>
+                <td class="hidden-xs">${mov.descripcion || ''}</td>
 				<td class="text-right font-weight-bold">${format_currency(mov.importe)}</td>
 				<td>${estado}</td>
                 <td class="text-center">${btn_action}</td>
