@@ -15,9 +15,15 @@ def get_columns():
 	return [
 		{
 			"label": _("Clasificación"),
-			"fieldname": "clasificacion", # Asumiendo campo 'concept' en Movimiento, si es 'clasificacion' cambiar aquí
+			"fieldname": "clasificacion",
 			"fieldtype": "Data",
 			"width": 180
+		},
+		{
+			"label": _("Estado"),
+			"fieldname": "estado",
+			"fieldtype": "Data",
+			"width": 120
 		},
 		{
 			"label": _("Cantidad"),
@@ -47,19 +53,24 @@ def get_data(filters):
 	if filters.get("type"):
 		condiciones += f" AND tipo = '{filters.get('type')}'"
 
-	# Obtener datos agrupados por Concepto
+	# Obtener datos agrupados por Clasificación y Estado de Vinculación
 	data = frappe.db.sql(f"""
 		SELECT 
 			clasificacion, 
+            CASE WHEN vinculado = 1 THEN 'Cerrado' ELSE 'Pendiente' END as estado,
 			COUNT(*) as cantidad, 
 			SUM(importe) as total
 		FROM `tabMovimiento` 
-		WHERE docstatus = 1
-		AND fecha_de_registro BETWEEN '{filters.get("from_date")}' AND '{filters.get("to_date")}'
+		WHERE docstatus < 2
+		AND fecha_de_registro BETWEEN %s AND %s
 		{condiciones}
-		GROUP BY clasificacion
+		GROUP BY clasificacion, vinculado
 		ORDER BY total DESC
-	""", as_dict=1)
+	""", (filters.get("from_date"), filters.get("to_date")), as_dict=1)
+
+	# Traducir estados
+	for row in data:
+		row["estado"] = _(row["estado"])
 
 	# Calcular %
 	total_general = sum([flt(d.total) for d in data])
@@ -72,7 +83,7 @@ def get_data(filters):
 	return data
 
 def get_chart(data, filters):
-	labels = [d.get("clasificacion") or _("Sin Clasificación") for d in data]
+	labels = [f"{d.get('clasificacion') or _('Sin Clasificación')} ({d.get('estado')})" for d in data]
 	values = [d.get("total") for d in data]
 
 	return {
