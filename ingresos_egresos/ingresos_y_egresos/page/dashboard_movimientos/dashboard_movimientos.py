@@ -22,7 +22,7 @@ def get_dashboard_data(sucursal=None, from_date=None, to_date=None):
     # 2. Construir filtros para frappe.get_all
     filtros = {
         "sucursal": sucursal,
-        "docstatus": 1
+        "docstatus": ["<", 2] # Incluimos Borradores (0) y Enviados (1)
     }
 
     if from_date and to_date:

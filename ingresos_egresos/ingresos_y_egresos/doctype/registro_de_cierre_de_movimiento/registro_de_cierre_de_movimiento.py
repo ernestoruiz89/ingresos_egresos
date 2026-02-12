@@ -110,7 +110,7 @@ class RegistrodeCierredeMovimiento(Document):
         
         filtros = {
             "sucursal": self.sucursal,
-            "docstatus": 1,
+            "docstatus": ["<", 2], # Borrador (0) o Enviado (1)
             "fecha_de_registro": ["between", [self.fecha_inicio, self.fecha_final]],
             "vinculado": 0 
         }
@@ -183,7 +183,7 @@ class RegistrodeCierredeMovimiento(Document):
         count = frappe.db.count("Movimiento", filters={
             "sucursal": self.sucursal,
             "fecha_de_registro": ["between", [self.fecha_inicio, self.fecha_final]],
-            "docstatus": 1,
+            "docstatus": ["<", 2],
             "vinculado": 0
         })
 
@@ -194,12 +194,13 @@ class RegistrodeCierredeMovimiento(Document):
             )
         else:
             # Actualización masiva (SQL es más eficiente para updates por rango)
+            # Al cerrar, SUBMITIMOS todos los movimientos (docstatus=1) y los vinculamos
             frappe.db.sql("""
                 UPDATE `tabMovimiento`
-                SET vinculado = 1, cierre = %s
+                SET vinculado = 1, cierre = %s, docstatus = 1
                 WHERE sucursal = %s
                 AND fecha_de_registro BETWEEN %s AND %s
-                AND docstatus = 1
+                AND docstatus < 2
                 AND vinculado = 0
             """, (self.name, self.sucursal, self.fecha_inicio, self.fecha_final))
 
@@ -208,10 +209,10 @@ class RegistrodeCierredeMovimiento(Document):
     def on_cancel(self):
         self.ignore_linked_doctypes = ["Movimiento"]
         
-        # Desvincular masivamente
+        # Desvincular masivamente y devolver a Borrador (0) si se cancela el cierre
         frappe.db.sql("""
             UPDATE `tabMovimiento`
-            SET vinculado = 0, cierre = NULL
+            SET vinculado = 0, cierre = NULL, docstatus = 0
             WHERE cierre = %s
         """, (self.name,))
 

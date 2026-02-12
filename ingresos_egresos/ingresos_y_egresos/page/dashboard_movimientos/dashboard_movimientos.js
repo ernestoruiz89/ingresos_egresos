@@ -120,10 +120,11 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
 									<th>Concepto</th>
 									<th>Monto</th>
 									<th>Estado</th>
+                                    <th>Acciones</th>
 								</tr>
 							</thead>
 							<tbody>
-								<tr><td colspan="5" class="text-center">Seleccione una sucursal para ver datos</td></tr>
+								<tr><td colspan="6" class="text-center">Seleccione una sucursal para ver datos</td></tr>
 							</tbody>
 						</table>
 					</div>
@@ -221,7 +222,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
         tbody.empty();
 
         if (!movimientos || movimientos.length === 0) {
-            tbody.append('<tr><td colspan="5" class="text-center">No hay movimientos recientes</td></tr>');
+            tbody.append('<tr><td colspan="6" class="text-center">No hay movimientos recientes</td></tr>');
             return;
         }
 
@@ -229,14 +230,33 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
             let badge_class = mov.tipo === 'Ingreso' ? 'badge-success' : 'badge-danger';
             let estado = mov.vinculado ? '<span class="badge badge-secondary">Cerrado</span>' : '<span class="badge badge-info">Pendiente</span>';
 
+            let btn_action = '';
+            if (mov.vinculado) {
+                btn_action = `<button class="btn btn-xs btn-default btn-view-mov" data-name="${mov.name}"><i class="fa fa-eye"></i></button>`;
+            } else {
+                btn_action = `<button class="btn btn-xs btn-default btn-edit-mov" data-name="${mov.name}"><i class="fa fa-pencil"></i></button>`;
+            }
+
             let row = `<tr>
 				<td>${frappe.datetime.str_to_user(mov.fecha_de_registro)}</td>
 				<td><span class="badge ${badge_class}">${mov.tipo}</span></td>
 				<td>${mov.clasificacion || ''}</td>
 				<td class="text-right font-weight-bold">${format_currency(mov.importe)}</td>
 				<td>${estado}</td>
+                <td class="text-center">${btn_action}</td>
 			</tr>`;
             tbody.append(row);
+        });
+
+        // Bind events
+        tbody.find('.btn-view-mov').on('click', function () {
+            let name = $(this).data('name');
+            show_edit_dialog(name, true);
+        });
+
+        tbody.find('.btn-edit-mov').on('click', function () {
+            let name = $(this).data('name');
+            show_edit_dialog(name, false);
         });
     }
 
@@ -328,7 +348,77 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
         }
 
         d.pending_files = pending_files;
+        d.pending_files = pending_files;
         d.show();
+    }
+
+    function show_edit_dialog(name, read_only) {
+        frappe.db.get_doc('Movimiento', name).then(doc => {
+            let d = new frappe.ui.Dialog({
+                title: read_only ? `Ver ${doc.tipo}` : `Editar ${doc.tipo}`,
+                fields: [
+                    {
+                        label: 'Sucursal',
+                        fieldname: 'sucursal',
+                        fieldtype: 'Link',
+                        options: 'Branch',
+                        default: doc.sucursal,
+                        read_only: 1
+                    },
+                    {
+                        label: 'Fecha',
+                        fieldname: 'fecha_de_registro',
+                        fieldtype: 'Date',
+                        default: doc.fecha_de_registro,
+                        reqd: 1,
+                        read_only: read_only
+                    },
+                    {
+                        label: 'Clasificación',
+                        fieldname: 'clasificacion',
+                        fieldtype: 'Data',
+                        default: doc.clasificacion,
+                        reqd: 1,
+                        read_only: read_only
+                    },
+                    {
+                        label: 'Importe',
+                        fieldname: 'importe',
+                        fieldtype: 'Currency',
+                        default: doc.importe,
+                        reqd: 1,
+                        read_only: read_only
+                    }
+                ],
+                primary_action_label: read_only ? null : 'Guardar Cambios',
+                primary_action: function (values) {
+                    if (!read_only) {
+                        frappe.call({
+                            method: 'frappe.client.set_value',
+                            args: {
+                                doctype: 'Movimiento',
+                                name: doc.name,
+                                fieldname: {
+                                    fecha_de_registro: values.fecha_de_registro,
+                                    clasificacion: values.clasificacion,
+                                    importe: values.importe
+                                }
+                            },
+                            callback: function (r) {
+                                if (!r.exc) {
+                                    frappe.msgprint('Movimiento actualizado');
+                                    d.hide();
+                                    refresh_dashboard();
+                                }
+                            }
+                        });
+                    } else {
+                        d.hide();
+                    }
+                }
+            });
+            d.show();
+        });
     }
 
     function create_movimiento(dialog, values) {
@@ -342,7 +432,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                     fecha_de_registro: values.fecha_de_registro,
                     clasificacion: values.clasificacion,
                     importe: values.importe,
-                    docstatus: 1
+                    docstatus: 0 // Crear como Borrador (0)
                 }
             },
             freeze: true,
