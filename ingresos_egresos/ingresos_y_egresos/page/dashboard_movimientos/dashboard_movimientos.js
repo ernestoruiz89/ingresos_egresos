@@ -84,6 +84,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
 					<div class="dashboard-card-bg" style="background: #e2e3e5; padding: 20px; border-radius: 8px; border: 1px solid #d6d8db;">
 						<h5 style="color: #383d41;">Saldo Actual</h5>
 						<h2 id="kpi-saldo" style="font-weight: bold; margin-top: 10px;">$ 0.00</h2>
+						<div style="font-size: 11px; visibility: hidden;">&nbsp;</div>
 					</div>
 				</div>
 			</div>
