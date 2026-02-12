@@ -354,70 +354,182 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
 
     function show_edit_dialog(name, read_only) {
         frappe.db.get_doc('Movimiento', name).then(doc => {
-            let d = new frappe.ui.Dialog({
-                title: read_only ? `Ver ${doc.tipo}` : `Editar ${doc.tipo}`,
-                fields: [
-                    {
-                        label: 'Sucursal',
-                        fieldname: 'sucursal',
-                        fieldtype: 'Link',
-                        options: 'Branch',
-                        default: doc.sucursal,
-                        read_only: 1
+            // Obtener adjuntos existentes
+            frappe.call({
+                method: 'frappe.client.get_list',
+                args: {
+                    doctype: 'File',
+                    filters: {
+                        attached_to_doctype: 'Movimiento',
+                        attached_to_name: name
                     },
-                    {
-                        label: 'Fecha',
-                        fieldname: 'fecha_de_registro',
-                        fieldtype: 'Date',
-                        default: doc.fecha_de_registro,
-                        reqd: 1,
-                        read_only: read_only
-                    },
-                    {
-                        label: 'Clasificación',
-                        fieldname: 'clasificacion',
-                        fieldtype: 'Data',
-                        default: doc.clasificacion,
-                        reqd: 1,
-                        read_only: read_only
-                    },
-                    {
-                        label: 'Importe',
-                        fieldname: 'importe',
-                        fieldtype: 'Currency',
-                        default: doc.importe,
-                        reqd: 1,
-                        read_only: read_only
-                    }
-                ],
-                primary_action_label: read_only ? null : 'Guardar Cambios',
-                primary_action: function (values) {
+                    fields: ['name', 'file_name', 'file_url']
+                },
+                callback: function (r_files) {
+                    let attachments = r_files.message || [];
+
+                    let fields = [
+                        {
+                            label: 'Sucursal',
+                            fieldname: 'sucursal',
+                            fieldtype: 'Link',
+                            options: 'Branch',
+                            default: doc.sucursal,
+                            read_only: 1
+                        },
+                        {
+                            label: 'Fecha',
+                            fieldname: 'fecha_de_registro',
+                            fieldtype: 'Date',
+                            default: doc.fecha_de_registro,
+                            reqd: 1,
+                            read_only: read_only
+                        },
+                        {
+                            label: 'Clasificación',
+                            fieldname: 'clasificacion',
+                            fieldtype: 'Data',
+                            default: doc.clasificacion,
+                            reqd: 1,
+                            read_only: read_only
+                        },
+                        {
+                            label: 'Importe',
+                            fieldname: 'importe',
+                            fieldtype: 'Currency',
+                            default: doc.importe,
+                            reqd: 1,
+                            read_only: read_only
+                        },
+                        {
+                            fieldtype: 'Section Break',
+                            label: 'Adjuntos'
+                        },
+                        {
+                            fieldname: 'existing_attachments',
+                            fieldtype: 'HTML',
+                            label: 'Archivos Existentes'
+                        }
+                    ];
+
                     if (!read_only) {
-                        frappe.call({
-                            method: 'frappe.client.set_value',
-                            args: {
-                                doctype: 'Movimiento',
-                                name: doc.name,
-                                fieldname: {
-                                    fecha_de_registro: values.fecha_de_registro,
-                                    clasificacion: values.clasificacion,
-                                    importe: values.importe
-                                }
-                            },
-                            callback: function (r) {
-                                if (!r.exc) {
-                                    frappe.msgprint('Movimiento actualizado');
-                                    d.hide();
-                                    refresh_dashboard();
-                                }
-                            }
+                        fields.push({
+                            fieldname: 'new_file_upload_area',
+                            fieldtype: 'HTML',
+                            label: 'Agregar Archivos'
                         });
-                    } else {
-                        d.hide();
                     }
+
+                    let d = new frappe.ui.Dialog({
+                        title: read_only ? `Ver ${doc.tipo}` : `Editar ${doc.tipo}`,
+                        fields: fields,
+                        primary_action_label: read_only ? null : 'Guardar Cambios',
+                        primary_action: function (values) {
+                            if (!read_only) {
+                                frappe.call({
+                                    method: 'frappe.client.set_value',
+                                    args: {
+                                        doctype: 'Movimiento',
+                                        name: doc.name,
+                                        fieldname: {
+                                            fecha_de_registro: values.fecha_de_registro,
+                                            clasificacion: values.clasificacion,
+                                            importe: values.importe
+                                        }
+                                    },
+                                    callback: function (r) {
+                                        if (!r.exc) {
+                                            // Subir nuevos archivos si los hay
+                                            if (d.pending_files && d.pending_files.length > 0) {
+                                                upload_files(doc.doctype, doc.name, d.pending_files, function () {
+                                                    frappe.msgprint('Movimiento actualizado');
+                                                    d.hide();
+                                                    refresh_dashboard();
+                                                });
+                                            } else {
+                                                frappe.msgprint('Movimiento actualizado');
+                                                d.hide();
+                                                refresh_dashboard();
+                                            }
+                                        }
+                                    }
+                                });
+                            } else {
+                                d.hide();
+                            }
+                        }
+                    });
+
+                    // Renderizar Archivos Existentes
+                    let $attach_wrapper = d.fields_dict.existing_attachments.$wrapper;
+                    let html = '<div class="list-group" style="margin-bottom: 15px;">';
+                    if (attachments.length === 0) {
+                        html += '<div class="list-group-item font-italic text-muted">No hay adjuntos</div>';
+                    } else {
+                        attachments.forEach(f => {
+                            html += `<div class="list-group-item d-flex justify-content-between align-items-center" id="file-${f.name}">
+                                    <div>
+                                        <i class="fa fa-paperclip text-muted mr-2"></i>
+                                        <a href="${f.file_url}" target="_blank">${f.file_name}</a>
+                                    </div>
+                                    ${!read_only ? `<button class="btn btn-xs btn-danger btn-delete-file" data-name="${f.name}" title="Eliminar"><i class="fa fa-times"></i></button>` : ''}
+                                </div>`;
+                        });
+                    }
+                    html += '</div>';
+                    $attach_wrapper.html(html);
+
+                    if (!read_only) {
+                        // Evento Eliminar
+                        $attach_wrapper.find('.btn-delete-file').on('click', function () {
+                            let file_name = $(this).data('name');
+                            frappe.confirm('¿Eliminar este archivo adjunto?', () => {
+                                frappe.client.delete("File", file_name).then(() => {
+                                    $attach_wrapper.find(`#file-${file_name}`).remove();
+                                    frappe.show_alert('Archivo eliminado');
+                                });
+                            });
+                        });
+
+                        // Configurar Drag & Drop para Nuevos
+                        let $upload_wrapper = d.fields_dict.new_file_upload_area.$wrapper;
+                        $upload_wrapper.html(`
+                            <div class="file-drop-zone" style="border: 2px dashed #ccc; border-radius: 8px; padding: 15px; text-align: center; background: #f9f9f9; cursor: pointer;">
+                                <div style="font-size: 20px; margin-bottom: 5px;"><i class="fa fa-cloud-upload"></i></div>
+                                <p style="margin: 0; font-size: 12px;">Arrastra archivos aquí o haz clic</p>
+                                <input type="file" id="file-input-edit" multiple style="display: none;">
+                                <div id="file-preview-edit" style="margin-top: 10px; text-align: left;"></div>
+                            </div>
+                        `);
+
+                        let pending_files = [];
+                        let $dropZone = $upload_wrapper.find('.file-drop-zone');
+                        let $fileInput = $upload_wrapper.find('#file-input-edit');
+                        let $previewList = $upload_wrapper.find('#file-preview-edit');
+
+                        $dropZone.on('dragover', function (e) { e.preventDefault(); e.stopPropagation(); $(this).css({ 'background': '#e9ecef', 'border-color': '#007bff' }); });
+                        $dropZone.on('dragleave', function (e) { e.preventDefault(); e.stopPropagation(); $(this).css({ 'background': '#f9f9f9', 'border-color': '#ccc' }); });
+                        $dropZone.on('drop', function (e) {
+                            e.preventDefault(); e.stopPropagation(); $(this).css({ 'background': '#f9f9f9', 'border-color': '#ccc' });
+                            handle_edit_files(e.originalEvent.dataTransfer.files);
+                        });
+                        $dropZone.on('click', function () { $fileInput.click(); });
+                        $fileInput.on('click', function (e) { e.stopPropagation(); });
+                        $fileInput.on('change', function () { handle_edit_files(this.files); });
+
+                        function handle_edit_files(files) {
+                            for (let i = 0; i < files.length; i++) {
+                                pending_files.push(files[i]);
+                                $previewList.append(`<div style="background: #fff; border: 1px solid #ddd; padding: 4px; margin-bottom: 4px; font-size: 12px;">${files[i].name}</div>`);
+                            }
+                        }
+
+                        d.pending_files = pending_files;
+                    }
+
+                    d.show();
                 }
             });
-            d.show();
         });
     }
 
@@ -515,28 +627,28 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
             },
             callback: function (r_cierre) {
                 let suggested_start_date = frappe.datetime.get_today();
-                
+
                 if (r_cierre.message && r_cierre.message.fecha_final) {
-                     // Caso 1: Hay un cierre previo -> Fecha Inicio = Cierre Previo + 1 día
-                     suggested_start_date = frappe.datetime.add_days(r_cierre.message.fecha_final, 1);
-                     show_cierre_dialog(sucursal, suggested_start_date);
+                    // Caso 1: Hay un cierre previo -> Fecha Inicio = Cierre Previo + 1 día
+                    suggested_start_date = frappe.datetime.add_days(r_cierre.message.fecha_final, 1);
+                    show_cierre_dialog(sucursal, suggested_start_date);
                 } else {
-                     // Caso 2: No hay cierre previo -> Buscar el movimiento abierto más antiguo
-                     frappe.call({
-                         method: 'frappe.client.get_value',
-                         args: {
-                             doctype: 'Movimiento',
-                             filters: { sucursal: sucursal, vinculado: 0, docstatus: ['<', 2] },
-                             fieldname: 'fecha_de_registro',
-                             order_by: 'fecha_de_registro asc'
-                         },
-                         callback: function(r_mov) {
-                             if(r_mov.message && r_mov.message.fecha_de_registro) {
-                                 suggested_start_date = r_mov.message.fecha_de_registro;
-                             }
-                             show_cierre_dialog(sucursal, suggested_start_date);
-                         }
-                     });
+                    // Caso 2: No hay cierre previo -> Buscar el movimiento abierto más antiguo
+                    frappe.call({
+                        method: 'frappe.client.get_value',
+                        args: {
+                            doctype: 'Movimiento',
+                            filters: { sucursal: sucursal, vinculado: 0, docstatus: ['<', 2] },
+                            fieldname: 'fecha_de_registro',
+                            order_by: 'fecha_de_registro asc'
+                        },
+                        callback: function (r_mov) {
+                            if (r_mov.message && r_mov.message.fecha_de_registro) {
+                                suggested_start_date = r_mov.message.fecha_de_registro;
+                            }
+                            show_cierre_dialog(sucursal, suggested_start_date);
+                        }
+                    });
                 }
             }
         });
