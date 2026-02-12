@@ -119,8 +119,26 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
             }
         </style>
 		<div class="dashboard-container" style="padding: 20px;">
+			<!-- Sección de Acciones Rápidas -->
+			<div class="row" style="margin-bottom: 30px;">
+				<div class="col-md-12">
+					<h4>Acciones Rápidas</h4>
+					<div class="quick-actions-container" style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
+						<button class="btn btn-primary btn-lg" id="btn-registrar-entrada">
+							<span class="fa fa-plus"></span> Registrar Entrada
+						</button>
+						<button class="btn btn-danger btn-lg" id="btn-registrar-salida">
+							<span class="fa fa-minus"></span> Registrar Salida
+						</button>
+						<button class="btn btn-secondary btn-lg" id="btn-realizar-cierre">
+							<span class="fa fa-lock"></span> Realizar Cierre
+						</button>
+					</div>
+				</div>
+			</div>
+
 			<!-- Sección de Tarjetas KPI -->
-			<div class="row">
+			<div class="row" style="margin-bottom: 30px;">
 				<div class="col-sm-6 col-md-3">
 					<div class="dashboard-card-bg" style="background: #e2e3e5; padding: 20px; border-radius: 8px; border: 1px solid #d6d8db;">
 						<h5 style="color: #383d41;">Saldo Anterior</h5>
@@ -147,24 +165,6 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
 						<h5 style="color: #004085;">Saldo Actual</h5>
 						<h2 id="kpi-saldo" style="font-weight: bold; margin-top: 10px;">$ 0.00</h2>
 						<div style="font-size: 11px; visibility: hidden;">&nbsp;</div>
-					</div>
-				</div>
-			</div>
-
-			<!-- Sección de Acciones Rápidas -->
-			<div class="row" style="margin-bottom: 30px;">
-				<div class="col-md-12">
-					<h4>Acciones Rápidas</h4>
-					<div class="quick-actions-container" style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
-						<button class="btn btn-primary btn-lg" id="btn-registrar-entrada">
-							<span class="fa fa-plus"></span> Registrar Entrada
-						</button>
-						<button class="btn btn-danger btn-lg" id="btn-registrar-salida">
-							<span class="fa fa-minus"></span> Registrar Salida
-						</button>
-						<button class="btn btn-secondary btn-lg" id="btn-realizar-cierre">
-							<span class="fa fa-lock"></span> Realizar Cierre
-						</button>
 					</div>
 				</div>
 			</div>
