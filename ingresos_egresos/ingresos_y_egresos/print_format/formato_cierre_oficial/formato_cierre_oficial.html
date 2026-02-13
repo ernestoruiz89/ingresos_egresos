@@ -1,5 +1,5 @@
 <div class="print-format-gutter" style="background-color: #ffffff; padding: 20px;">
-    <div class="header-section" style="margin-bottom: 20px; border-bottom: 2px solid #666; padding-bottom: 10px;">
+    <div class="header-section" style="margin-bottom: 20px; border-bottom: 2px solid #999; padding-bottom: 10px;">
         <div class="row">
             <div class="col-xs-8">
                 <h2 style="margin: 0; color: #333;">REPORTE DE CIERRE DE CAJA</h2>
@@ -43,7 +43,7 @@
     {% set saldo_anterior = doc.saldo_final - doc.total_ingresos + doc.total_egresos %}
 
     <!-- Saldo Anterior -->
-    <div style="margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px;">
+    <div style="margin-bottom: 20px; border-bottom: 2px solid #999; padding-bottom: 10px;">
         <div class="row">
             <div class="col-xs-12 text-right">
                 <h4 style="margin: 0; font-weight: bold; font-size: 14px;">Saldo Anterior: {{
@@ -55,7 +55,7 @@
     <!-- Detalle de Movimientos -->
     <div class="details-section">
         <!-- Ingresos -->
-        <h4 style="margin-top: 20px; border-bottom: 1px solid #666; padding-bottom: 5px; color: #28a745;">Detalle de
+        <h4 style="margin-top: 20px; border-bottom: 1px solid #999; padding-bottom: 5px; color: #28a745;">Detalle de
             Ingresos</h4>
         {% if doc.ingresos %}
         <table class="table table-condensed" style="font-size: 12px;">
@@ -80,7 +80,7 @@
                 {% endfor %}
             </tbody>
             <tfoot>
-                <tr style="font-weight: bold; background-color: #fff; border-top: 2px solid #666; font-size: 14px;">
+                <tr style="font-weight: bold; background-color: #fff; border-top: 2px solid #999; font-size: 14px;">
                     <td colspan="4" class="text-right">Total Ingresos:</td>
                     <td class="text-right">{{ frappe.utils.fmt_money(doc.total_ingresos) }}</td>
                 </tr>
@@ -91,7 +91,7 @@
         {% endif %}
 
         <!-- Egresos -->
-        <h4 style="margin-top: 30px; border-bottom: 1px solid #666; padding-bottom: 5px; color: #dc3545;">Detalle de
+        <h4 style="margin-top: 30px; border-bottom: 1px solid #999; padding-bottom: 5px; color: #dc3545;">Detalle de
             Egresos</h4>
         {% if doc.egresos %}
         <table class="table table-condensed" style="font-size: 12px;">
@@ -116,7 +116,7 @@
                 {% endfor %}
             </tbody>
             <tfoot>
-                <tr style="font-weight: bold; background-color: #fff; border-top: 2px solid #666; font-size: 14px;">
+                <tr style="font-weight: bold; background-color: #fff; border-top: 2px solid #999; font-size: 14px;">
                     <td colspan="4" class="text-right">Total Egresos:</td>
                     <td class="text-right">{{ frappe.utils.fmt_money(doc.total_egresos) }}</td>
                 </tr>
@@ -128,7 +128,7 @@
     </div>
 
     <!-- Saldo Final -->
-    <div style="margin-top: 20px; border-top: 2px solid #333; padding-top: 10px;">
+    <div style="margin-top: 20px; border-top: 2px solid #999; padding-top: 10px;">
         <div class="row">
             <div class="col-xs-12 text-right">
                 <h3 style="margin: 0; font-weight: bold; font-size: 14px;">Saldo Final: {{
