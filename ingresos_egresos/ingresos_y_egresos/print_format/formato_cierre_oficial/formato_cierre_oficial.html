@@ -19,21 +19,21 @@
     </div>
 
     <div class="info-section" style="margin-bottom: 30px;">
-        <table class="table table-bordered table-condensed" style="border-color: #666;">
+        <table class="table table-bordered table-condensed" style="border-color: #999;">
             <tbody>
                 <tr>
-                    <td style="width: 25%; background-color: #eee; border-color: #666;"><strong>Fecha Inicio:</strong>
+                    <td style="width: 25%; background-color: #eee; border-color: #999;"><strong>Fecha Inicio:</strong>
                     </td>
-                    <td style="width: 25%; border-color: #666;">{{ frappe.utils.format_date(doc.fecha_inicio,
+                    <td style="width: 25%; border-color: #999;">{{ frappe.utils.format_date(doc.fecha_inicio,
                         "dd-MM-yyyy") }}</td>
-                    <td style="width: 25%; background-color: #eee; border-color: #666;"><strong>Fecha Final:</strong>
+                    <td style="width: 25%; background-color: #eee; border-color: #999;"><strong>Fecha Final:</strong>
                     </td>
-                    <td style="width: 25%; border-color: #666;">{{ frappe.utils.format_date(doc.fecha_final,
+                    <td style="width: 25%; border-color: #999;">{{ frappe.utils.format_date(doc.fecha_final,
                         "dd-MM-yyyy") }}</td>
                 </tr>
                 <tr>
-                    <td style="background-color: #eee; border-color: #666;"><strong>Responsable:</strong></td>
-                    <td colspan="3" style="border-color: #666;">{{ doc.owner }}</td>
+                    <td style="background-color: #eee; border-color: #999;"><strong>Responsable:</strong></td>
+                    <td colspan="3" style="border-color: #999;">{{ doc.owner }}</td>
                 </tr>
             </tbody>
         </table>
