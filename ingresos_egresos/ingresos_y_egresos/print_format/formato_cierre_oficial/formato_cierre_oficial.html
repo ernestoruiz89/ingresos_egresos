@@ -39,33 +39,14 @@
         </table>
     </div>
 
-    <!-- Resumen Financiero -->
-    <div class="summary-section" style="margin-bottom: 30px;">
-        <h4 style="background-color: #eee; padding: 5px; border-radius: 4px;">Resumen Financiero</h4>
-        <table class="table table-bordered" style="border-color: #666;">
-            <thead class="thead-light">
-                <tr>
-                    <th class="text-center" style="width: 25%; border-color: #666;">Saldo Anterior</th>
-                    <th class="text-center" style="width: 25%; border-color: #666;">Total Ingresos (+)</th>
-                    <th class="text-center" style="width: 25%; border-color: #666;">Total Egresos (-)</th>
-                    <th class="text-center" style="width: 25%; border-color: #666;">Saldo Final (=)</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% set saldo_anterior = doc.saldo_final - doc.total_ingresos + doc.total_egresos %}
-                <tr>
-                    <td class="text-right" style="font-size: 16px; border-color: #666;">{{
-                        frappe.utils.fmt_money(saldo_anterior) }}</td>
-                    <td class="text-right text-success" style="font-size: 16px; color: #28a745; border-color: #666;">{{
-                        frappe.utils.fmt_money(doc.total_ingresos) }}</td>
-                    <td class="text-right text-danger" style="font-size: 16px; color: #dc3545; border-color: #666;">{{
-                        frappe.utils.fmt_money(doc.total_egresos) }}</td>
-                    <td class="text-right"
-                        style="font-size: 18px; font-weight: bold; background-color: #f0f8ff; border-color: #666;">{{
-                        frappe.utils.fmt_money(doc.saldo_final) }}</td>
-                </tr>
-            </tbody>
-        </table>
+    <!-- Calculo de Saldo Anterior -->
+    {% set saldo_anterior = doc.saldo_final - doc.total_ingresos + doc.total_egresos %}
+
+    <!-- Saldo Anterior -->
+    <div class="row" style="margin-bottom: 10px;">
+        <div class="col-xs-12 text-right">
+            <h4 style="margin: 0; font-weight: bold;">Saldo Anterior: {{ frappe.utils.fmt_money(saldo_anterior) }}</h4>
+        </div>
     </div>
 
     <!-- Detalle de Movimientos -->
@@ -143,8 +124,15 @@
         {% endif %}
     </div>
 
+    <!-- Saldo Final -->
+    <div class="row" style="margin-top: 20px; border-top: 2px solid #333; padding-top: 10px;">
+        <div class="col-xs-12 text-right">
+            <h3 style="margin: 0; font-weight: bold;">Saldo Final: {{ frappe.utils.fmt_money(doc.saldo_final) }}</h3>
+        </div>
+    </div>
+
     <!-- Firmas -->
-    <div class="signatures-section" style="margin-top: 80px; page-break-inside: avoid;">
+    <div class="signatures-section" style="margin-top: 60px; page-break-inside: avoid;">
         <div class="row">
             <div class="col-xs-1"></div>
             <div class="col-xs-4 text-center">
