@@ -43,9 +43,10 @@
     {% set saldo_anterior = doc.saldo_final - doc.total_ingresos + doc.total_egresos %}
 
     <!-- Saldo Anterior -->
-    <div class="row" style="margin-bottom: 10px;">
+    <div class="row" style="margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px;">
         <div class="col-xs-12 text-right">
-            <h4 style="margin: 0; font-weight: bold;">Saldo Anterior: {{ frappe.utils.fmt_money(saldo_anterior) }}</h4>
+            <h4 style="margin: 0; font-weight: bold; font-size: 14px;">Saldo Anterior: {{
+                frappe.utils.fmt_money(saldo_anterior) }}</h4>
         </div>
     </div>
 
@@ -127,7 +128,8 @@
     <!-- Saldo Final -->
     <div class="row" style="margin-top: 20px; border-top: 2px solid #333; padding-top: 10px;">
         <div class="col-xs-12 text-right">
-            <h3 style="margin: 0; font-weight: bold;">Saldo Final: {{ frappe.utils.fmt_money(doc.saldo_final) }}</h3>
+            <h3 style="margin: 0; font-weight: bold; font-size: 14px;">Saldo Final: {{
+                frappe.utils.fmt_money(doc.saldo_final) }}</h3>
         </div>
     </div>
 
