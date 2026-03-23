@@ -935,6 +935,14 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
             }
         });
 
+        // Set default moneda to base currency
+        frappe.db.get_value('IE Configuracion', 'IE Configuracion', 'moneda_base')
+        .then(r => {
+            if (r && r.message && r.message.moneda_base) {
+                d.set_value('moneda', r.message.moneda_base);
+            }
+        });
+
         d.show();
         update_cierre_dialog_state(d);
     }
@@ -949,6 +957,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                     moneda: values.moneda,
                     fecha_inicio: values.fecha_inicio,
                     fecha_final: values.fecha_final,
+                    moneda: values.moneda,
                     docstatus: 1 // Submit inmediato para aplicar cambios
                 }
             },
