@@ -47,10 +47,14 @@ class RegistrodeCierredeMovimiento(Document):
                 f"Este cierre va de {self.fecha_inicio} a {self.fecha_final}, lo cual cruza de mes."
             )
 
+        if not self.moneda:
+            frappe.throw("Debe especificar la moneda del cierre.")
+
         # Validacion de traslapes optimizada
         overlap = frappe.db.sql("""
             SELECT name, fecha_inicio, fecha_final FROM `tabRegistro de Cierre de Movimiento`
             WHERE sucursal = %s
+            AND moneda = %s
             AND docstatus = 1
             AND name != %s
             AND (
@@ -60,7 +64,7 @@ class RegistrodeCierredeMovimiento(Document):
             )
             LIMIT 1
         """, (
-            self.sucursal, self.name or "new",
+            self.sucursal, self.moneda, self.name or "new",
             self.fecha_inicio, self.fecha_final,
             self.fecha_inicio, self.fecha_final,
             self.fecha_inicio, self.fecha_final
@@ -78,7 +82,7 @@ class RegistrodeCierredeMovimiento(Document):
         # Obtenemos solo el primer cierre por fecha
         primer_cierre_fecha = frappe.db.get_value(
             "Registro de Cierre de Movimiento",
-            filters={"sucursal": self.sucursal, "docstatus": 1},
+            filters={"sucursal": self.sucursal, "moneda": self.moneda, "docstatus": 1},
             fieldname="fecha_inicio",
             order_by="fecha_inicio asc"
         )
@@ -90,9 +94,6 @@ class RegistrodeCierredeMovimiento(Document):
                     f"No se puede hacer un cierre antes del primer cierre registrado ({primer_cierre_fecha})."
                 )
         
-        if not self.moneda:
-            frappe.throw("Debe especificar la moneda del cierre.")
-
         # Poblar tablas y calcular totales automáticamente
         self.poblar_y_calcular()
 
