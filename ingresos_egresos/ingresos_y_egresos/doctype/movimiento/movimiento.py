@@ -4,16 +4,23 @@ from frappe.utils import getdate, flt
 
 class Movimiento(Document):
     def validate(self):
+        moneda_base = frappe.db.get_single_value("IE Configuracion", "moneda_base")
+
         # Establecer valores por defecto de moneda si no existen
         if not self.moneda:
-            moneda_base = frappe.db.get_single_value("IE Configuracion", "moneda_base")
             if moneda_base:
                 self.moneda = moneda_base
             else:
                 frappe.throw("Debe configurar la Moneda Base en 'IE Configuracion'")
 
+        if not moneda_base:
+            frappe.throw("Debe configurar la Moneda Base en 'IE Configuracion'")
+
         if not self.tasa_de_cambio or self.tasa_de_cambio <= 0:
-            self.tasa_de_cambio = 1.0
+            if self.moneda == moneda_base:
+                self.tasa_de_cambio = 1.0
+            else:
+                frappe.throw("Debe especificar una tasa de cambio válida para movimientos en moneda extranjera.")
 
         # Calcular importe base
         self.importe_base = flt(self.importe) * flt(self.tasa_de_cambio)
@@ -29,7 +36,7 @@ class Movimiento(Document):
         # Obtenemos solo la fecha del primer cierre para esta sucursal
         primer_cierre_fecha = frappe.db.get_value(
             "Registro de Cierre de Movimiento",
-            filters={"sucursal": self.sucursal, "docstatus": 1},
+            filters={"sucursal": self.sucursal, "moneda": self.moneda, "docstatus": 1},
             fieldname="fecha_inicio",
             order_by="fecha_inicio asc"
         )
@@ -49,6 +56,7 @@ class Movimiento(Document):
             "Registro de Cierre de Movimiento",
             filters={
                 "sucursal": self.sucursal,
+                "moneda": self.moneda,
                 "docstatus": 1,
                 "fecha_inicio": ["<=", fecha_de_registro],
                 "fecha_final": [">=", fecha_de_registro]

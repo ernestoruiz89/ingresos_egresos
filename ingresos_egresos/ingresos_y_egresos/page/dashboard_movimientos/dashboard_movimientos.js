@@ -791,46 +791,96 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
         }
 
         page.opening_dialog = true;
-        frappe.call({
-            method: 'frappe.client.get_value',
-            args: {
-                doctype: 'Registro de Cierre de Movimiento',
-                filters: { sucursal: sucursal, docstatus: 1 },
-                fieldname: 'fecha_final',
-                order_by: 'fecha_final desc'
-            },
-            callback: function (r_cierre) {
-                let suggested_start_date = frappe.datetime.get_today();
+        frappe.db.get_value('IE Configuracion', 'IE Configuracion', 'moneda_base')
+            .then((r) => {
+                page.opening_dialog = false;
+                const moneda_base = r && r.message ? r.message.moneda_base : null;
 
-                if (r_cierre.message && r_cierre.message.fecha_final) {
-                    // Caso 1: Hay un cierre previo -> Fecha Inicio = Cierre Previo + 1 día
-                    suggested_start_date = frappe.datetime.add_days(r_cierre.message.fecha_final, 1);
-                    page.opening_dialog = false;
-                    show_cierre_dialog(sucursal, suggested_start_date, true);
-                } else {
-                    // Caso 2: No hay cierre previo -> Buscar el movimiento abierto más antiguo
+                if (!moneda_base) {
+                    frappe.msgprint("Configure la Moneda Base en IE Configuracion antes de generar un cierre.");
+                    return;
+                }
+
+                show_cierre_dialog(sucursal, moneda_base);
+            });
+    }
+
+    function get_cierre_context(sucursal, moneda) {
+        return new Promise((resolve) => {
+            if (!sucursal || !moneda) {
+                resolve({
+                    start_date: frappe.datetime.get_today(),
+                    has_previous_closure: false
+                });
+                return;
+            }
+
+            frappe.call({
+                method: 'frappe.client.get_value',
+                args: {
+                    doctype: 'Registro de Cierre de Movimiento',
+                    filters: { sucursal: sucursal, moneda: moneda, docstatus: 1 },
+                    fieldname: 'fecha_final',
+                    order_by: 'fecha_final desc'
+                },
+                callback: function (r_cierre) {
+                    if (r_cierre.message && r_cierre.message.fecha_final) {
+                        resolve({
+                            start_date: frappe.datetime.add_days(r_cierre.message.fecha_final, 1),
+                            has_previous_closure: true
+                        });
+                        return;
+                    }
+
                     frappe.call({
                         method: 'frappe.client.get_value',
                         args: {
                             doctype: 'Movimiento',
-                            filters: { sucursal: sucursal, vinculado: 0, docstatus: ['<', 2] },
+                            filters: { sucursal: sucursal, moneda: moneda, vinculado: 0, docstatus: ['<', 2] },
                             fieldname: 'fecha_de_registro',
                             order_by: 'fecha_de_registro asc'
                         },
                         callback: function (r_mov) {
-                            page.opening_dialog = false;
-                            if (r_mov.message && r_mov.message.fecha_de_registro) {
-                                suggested_start_date = r_mov.message.fecha_de_registro;
-                            }
-                            show_cierre_dialog(sucursal, suggested_start_date, false);
+                            resolve({
+                                start_date: (r_mov.message && r_mov.message.fecha_de_registro) || frappe.datetime.get_today(),
+                                has_previous_closure: false
+                            });
                         }
                     });
                 }
-            }
+            });
         });
     }
 
-    function show_cierre_dialog(sucursal, start_date, has_previous_closure) {
+    function update_cierre_dialog_state(dialog) {
+        const values = dialog.get_values() || {};
+        const moneda = values.moneda;
+
+        if (!moneda) {
+            dialog.set_df_property('fecha_inicio', 'read_only', 0);
+            dialog.set_value('fecha_inicio', frappe.datetime.get_today());
+            dialog.get_field('ayuda_cierre').$wrapper.html(
+                '<p class="text-muted small">Seleccione una moneda para sugerir el rango inicial del cierre.</p>'
+            );
+            return;
+        }
+
+        dialog.get_field('ayuda_cierre').$wrapper.html(
+            '<p class="text-muted small">Consultando cierres y movimientos pendientes para la moneda seleccionada...</p>'
+        );
+
+        get_cierre_context(values.sucursal, moneda).then((context) => {
+            dialog.set_df_property('fecha_inicio', 'read_only', context.has_previous_closure ? 1 : 0);
+            dialog.set_value('fecha_inicio', context.start_date);
+            dialog.get_field('ayuda_cierre').$wrapper.html(
+                `<p class="text-muted small">${context.has_previous_closure
+                    ? 'La fecha de inicio está bloqueada para dar continuidad al último cierre de esta moneda.'
+                    : 'Esto vinculará todos los movimientos pendientes de la moneda seleccionada dentro del rango indicado.'}</p>`
+            );
+        });
+    }
+
+    function show_cierre_dialog(sucursal, moneda_base) {
         let d = new frappe.ui.Dialog({
             title: 'Realizar Cierre de Movimientos',
             fields: [
@@ -843,12 +893,22 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                     read_only: 1
                 },
                 {
+                    label: 'Moneda',
+                    fieldname: 'moneda',
+                    fieldtype: 'Link',
+                    options: 'Currency',
+                    default: moneda_base,
+                    reqd: 1,
+                    change: function () {
+                        update_cierre_dialog_state(d);
+                    }
+                },
+                {
                     label: 'Fecha Inicio',
                     fieldname: 'fecha_inicio',
                     fieldtype: 'Date',
-                    default: start_date,
-                    reqd: 1,
-                    read_only: has_previous_closure ? 1 : 0
+                    default: frappe.datetime.get_today(),
+                    reqd: 1
                 },
                 {
                     label: 'Fecha Final',
@@ -858,10 +918,8 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                     reqd: 1
                 },
                 {
-                    fieldtype: 'HTML',
-                    options: `<p class="text-muted small">${has_previous_closure ?
-                        'La fecha de inicio está bloqueada para dar continuidad al último cierre.' :
-                        'Esto vinculará todos los movimientos pendientes en el rango de fechas seleccionado.'}</p>`
+                    fieldname: 'ayuda_cierre',
+                    fieldtype: 'HTML'
                 }
             ],
             primary_action_label: 'Generar Cierre',
@@ -871,13 +929,14 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                     return;
                 }
 
-                frappe.confirm(`¿Está seguro de generar el cierre del <b>${values.fecha_inicio}</b> al <b>${values.fecha_final}</b>?`, () => {
+                frappe.confirm(`¿Está seguro de generar el cierre en <b>${values.moneda}</b> del <b>${values.fecha_inicio}</b> al <b>${values.fecha_final}</b>?`, () => {
                     create_cierre(d, values);
                 });
             }
         });
 
         d.show();
+        update_cierre_dialog_state(d);
     }
 
     function create_cierre(dialog, values) {
@@ -887,6 +946,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                 doc: {
                     doctype: 'Registro de Cierre de Movimiento',
                     sucursal: values.sucursal,
+                    moneda: values.moneda,
                     fecha_inicio: values.fecha_inicio,
                     fecha_final: values.fecha_final,
                     docstatus: 1 // Submit inmediato para aplicar cambios
