@@ -2,30 +2,26 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
+
 
 def execute(filters=None):
     filters = filters or {}
 
-    # Validar filtros
-    fecha_inicio = filters.get("fecha_inicio")
-    fecha_final = filters.get("fecha_final")
-    sucursal = filters.get("sucursal")
+    start_date = filters.get("fecha_inicio")
+    end_date = filters.get("fecha_final")
+    branch = filters.get("sucursal")
 
-    if not fecha_inicio or not fecha_final:
-        frappe.throw("Debe seleccionar una fecha inicial y una fecha final.")
+    if not start_date or not end_date:
+        frappe.throw(_("Debe seleccionar una fecha inicial y una fecha final."))
 
-    # Crear filtros dinámicos
-    condiciones = {
-        "fecha_de_registro": ["between", [fecha_inicio, fecha_final]]
-    }
+    report_filters = {"fecha_de_registro": ["between", [start_date, end_date]]}
+    if branch:
+        report_filters["sucursal"] = branch
 
-    if sucursal:
-        condiciones["sucursal"] = sucursal
-
-    # Obtener movimientos utilizando frappe.get_all
-    movimientos = frappe.get_all(
+    movements = frappe.get_all(
         "Movimiento",
-        filters=condiciones,
+        filters=report_filters,
         fields=[
             "name as movimiento",
             "sucursal",
@@ -38,28 +34,27 @@ def execute(filters=None):
             "tasa_de_cambio",
             "importe_base",
             "descripcion",
-            "vinculado"
+            "vinculado",
         ],
-        order_by="fecha_de_registro ASC"
+        order_by="fecha_de_registro ASC",
     )
 
-    # Definir columnas del reporte
     columns = [
-        {"label": "Movimiento", "fieldname": "movimiento", "fieldtype": "Link", "options": "Movimiento", "width": 150},
-        {"label": "Sucursal", "fieldname": "sucursal", "fieldtype": "Link", "options": "Branch", "width": 120},
-        {"label": "Fecha de Registro", "fieldname": "fecha_de_registro", "fieldtype": "Date", "width": 120},
-        {"label": "Tipo", "fieldname": "tipo", "fieldtype": "Data", "width": 100},
-        {"label": "Clasificación", "fieldname": "clasificacion", "fieldtype": "Data", "width": 120},
-        {"label": "Referencia", "fieldname": "referencia", "fieldtype": "Data", "width": 150},
-        {"label": "Moneda", "fieldname": "moneda", "fieldtype": "Link", "options": "Currency", "width": 80},
-        {"label": "Importe", "fieldname": "importe", "fieldtype": "Currency", "width": 120},
-        {"label": "TC", "fieldname": "tasa_de_cambio", "fieldtype": "Float", "width": 80},
-        {"label": "Importe Base", "fieldname": "importe_base", "fieldtype": "Currency", "width": 120},
-        {"label": "Estado", "fieldname": "estado", "fieldtype": "Data", "width": 100},
-        {"label": "Descripción", "fieldname": "descripcion", "fieldtype": "Text", "width": 200},
+        {"label": _("Movimiento"), "fieldname": "movimiento", "fieldtype": "Link", "options": "Movimiento", "width": 150},
+        {"label": _("Sucursal"), "fieldname": "sucursal", "fieldtype": "Link", "options": "Branch", "width": 120},
+        {"label": _("Fecha de Registro"), "fieldname": "fecha_de_registro", "fieldtype": "Date", "width": 120},
+        {"label": _("Tipo"), "fieldname": "tipo", "fieldtype": "Data", "width": 100},
+        {"label": _("Clasificación"), "fieldname": "clasificacion", "fieldtype": "Data", "width": 120},
+        {"label": _("Referencia"), "fieldname": "referencia", "fieldtype": "Data", "width": 150},
+        {"label": _("Moneda"), "fieldname": "moneda", "fieldtype": "Link", "options": "Currency", "width": 80},
+        {"label": _("Importe"), "fieldname": "importe", "fieldtype": "Currency", "width": 120},
+        {"label": _("Tasa de Cambio"), "fieldname": "tasa_de_cambio", "fieldtype": "Float", "width": 100},
+        {"label": _("Importe Base"), "fieldname": "importe_base", "fieldtype": "Currency", "width": 120},
+        {"label": _("Estado"), "fieldname": "estado", "fieldtype": "Data", "width": 100},
+        {"label": _("Descripción"), "fieldname": "descripcion", "fieldtype": "Text", "width": 200},
     ]
 
-    for mov in movimientos:
-        mov["estado"] = "Cerrado" if mov.get("vinculado") else "Pendiente"
+    for movement in movements:
+        movement["estado"] = _("Cerrado") if movement.get("vinculado") else _("Pendiente")
 
-    return columns, movimientos
+    return columns, movements

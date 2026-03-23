@@ -1,85 +1,103 @@
 import frappe
+from frappe import _
 from frappe.model.document import Document
-from frappe.utils import getdate, flt
+from frappe.utils import flt, getdate
+
 
 class Movimiento(Document):
     def validate(self):
-        # Establecer valores por defecto de moneda si no existen
-        if not self.moneda:
-            moneda_base = frappe.db.get_single_value("IE Configuracion", "moneda_base")
-            if moneda_base:
-                self.moneda = moneda_base
-            else:
-                frappe.throw("Debe configurar la Moneda Base en 'IE Configuracion'")
+        self.ensure_currency_defaults()
+        self.calculate_base_amount()
+        self.validate_required_fields()
+        self.validate_against_closure_dates()
+        self.prevent_manual_submission()
 
+    def ensure_currency_defaults(self):
+        if self.moneda:
+            return
+
+        base_currency = frappe.db.get_single_value("IE Configuracion", "moneda_base")
+        if not base_currency:
+            frappe.throw(_("Debe configurar la moneda base en IE Configuración antes de guardar movimientos."))
+
+        self.moneda = base_currency
+
+    def calculate_base_amount(self):
         if not self.tasa_de_cambio or self.tasa_de_cambio <= 0:
             self.tasa_de_cambio = 1.0
 
-        # Calcular importe base
         self.importe_base = flt(self.importe) * flt(self.tasa_de_cambio)
 
-        # Verificar que la sucursal y la fecha de registro estén definidas
-        if not self.sucursal or not self.fecha_de_registro:
-            frappe.throw("Debe definir una sucursal y una fecha de registro.")
+    def validate_required_fields(self):
+        if self.sucursal and self.fecha_de_registro:
+            return
 
-        # Asegurar objeto date
-        fecha_de_registro = getdate(self.fecha_de_registro)
+        frappe.throw(_("Debe definir una sucursal y una fecha de registro."))
 
-        # 1. Validar que la fecha no sea anterior al primer cierre
-        # Obtenemos solo la fecha del primer cierre para esta sucursal
-        primer_cierre_fecha = frappe.db.get_value(
+    def validate_against_closure_dates(self):
+        posting_date = getdate(self.fecha_de_registro)
+        first_closure_date = frappe.db.get_value(
             "Registro de Cierre de Movimiento",
             filters={"sucursal": self.sucursal, "docstatus": 1},
             fieldname="fecha_inicio",
-            order_by="fecha_inicio asc"
+            order_by="fecha_inicio asc",
         )
 
-        if primer_cierre_fecha:
-            primer_cierre_fecha = getdate(primer_cierre_fecha)
-            if fecha_de_registro < primer_cierre_fecha:
+        if first_closure_date:
+            first_closure_date = getdate(first_closure_date)
+            if posting_date < first_closure_date:
                 frappe.throw(
-                    f"No se puede agregar el movimiento porque la fecha {fecha_de_registro} es anterior al primer cierre "
-                    f"realizado ({primer_cierre_fecha})."
+                    _(
+                        "No se puede agregar el movimiento porque la fecha {0} es anterior al primer cierre registrado ({1})."
+                    ).format(posting_date, first_closure_date)
                 )
 
-        # 2. Validar que la fecha no esté incluida en un cierre existente
-        # Buscamos si existe UN cierre que cubra esta fecha. frappe.db.exists no soporta filtros complejos facilmente en todas las versiones
-        # pero get_value con filtros de rango es eficiente.
-        cierre_existente = frappe.db.get_value(
+        existing_closure = frappe.db.get_value(
             "Registro de Cierre de Movimiento",
             filters={
                 "sucursal": self.sucursal,
                 "docstatus": 1,
-                "fecha_inicio": ["<=", fecha_de_registro],
-                "fecha_final": [">=", fecha_de_registro]
+                "fecha_inicio": ["<=", posting_date],
+                "fecha_final": [">=", posting_date],
             },
             fieldname=["name", "fecha_inicio", "fecha_final"],
-            as_dict=True
+            as_dict=True,
         )
 
-        if cierre_existente:
+        if existing_closure:
             frappe.throw(
-                f"No se puede agregar el movimiento porque la fecha {fecha_de_registro} está incluida en el cierre {cierre_existente.name} "
-                f"({cierre_existente.fecha_inicio} - {cierre_existente.fecha_final})."
+                _(
+                    "No se puede agregar el movimiento porque la fecha {0} ya está incluida en el cierre {1} ({2} - {3})."
+                ).format(
+                    posting_date,
+                    existing_closure.name,
+                    existing_closure.fecha_inicio,
+                    existing_closure.fecha_final,
+                )
             )
 
-        # 3. Validar que no se pueda enviar manualmente (docstatus=1) si no tiene 'vinculado'
-        # Nota: El proceso de Cierre utiliza SQL directo para actualizar docstatus, lo que evita llamar a validate()
-        # y permite que se marquen como enviados sin pasar por este bloqueo manual.
-        if self.docstatus == 1 and not self.vinculado:
-            frappe.throw("No se pueden enviar movimientos manualmente. Deben ser procesados mediante un Cierre de Movimientos.")
+    def prevent_manual_submission(self):
+        if self.docstatus != 1 or self.vinculado:
+            return
+
+        frappe.throw(
+            _(
+                "No se pueden enviar movimientos manualmente. Deben procesarse mediante un cierre de movimientos."
+            )
+        )
+
 
 @frappe.whitelist()
 def get_code_name_options(code_name):
     if not code_name:
         return []
-    
-    sql_query = """
+
+    query = """
         SELECT cv.code_value
         FROM `tabIE Codigo` c
         INNER JOIN `tabIE Codigo Detalle` cv ON c.name = cv.parent
         WHERE c.code_name = %s AND cv.active = 1
         ORDER BY cv.idx ASC
     """
-    options = frappe.db.sql(sql_query, (code_name), as_dict=True)
+    options = frappe.db.sql(query, (code_name,), as_dict=True)
     return [option.code_value for option in options]
