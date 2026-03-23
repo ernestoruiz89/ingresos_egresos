@@ -41,6 +41,33 @@ frappe.ui.form.on('Movimiento', {
     tipo: function (frm) {
         if (frm.doc.docstatus === 1) return;
         get_code_name_options(frm, frm.doc.tipo);
+    },
+    setup: function(frm) {
+        // Set default currency to base currency on new document
+        if (frm.is_new() && !frm.doc.moneda) {
+            frappe.db.get_value('IE Configuracion', 'IE Configuracion', 'moneda_base')
+            .then(r => {
+                if (r && r.message && r.message.moneda_base) {
+                    frm.set_value('moneda', r.message.moneda_base);
+                }
+            });
+        }
+    },
+
+    fecha_de_registro: function(frm) {
+        fetch_exchange_rate(frm);
+    },
+
+    moneda: function(frm) {
+        fetch_exchange_rate(frm);
+    },
+
+    importe: function(frm) {
+        calculate_base_amount(frm);
+    },
+
+    tasa_de_cambio: function(frm) {
+        calculate_base_amount(frm);
     }
 });
 
@@ -78,4 +105,46 @@ function get_code_name_options(frm, code_name) {
             }
         }
     });
+}
+
+function fetch_exchange_rate(frm) {
+    if (frm.doc.moneda && frm.doc.fecha_de_registro) {
+        frappe.db.get_value('IE Configuracion', 'IE Configuracion', 'moneda_base')
+        .then(r => {
+            let base_currency = '';
+            if (r && r.message && r.message.moneda_base) {
+                base_currency = r.message.moneda_base;
+            }
+
+            if (!base_currency) {
+                return;
+            }
+
+            if (frm.doc.moneda === base_currency) {
+                frm.set_value('tasa_de_cambio', 1.0);
+            } else {
+                frappe.call({
+                    method: 'erpnext.setup.utils.get_exchange_rate',
+                    args: {
+                        transaction_date: frm.doc.fecha_de_registro,
+                        from_currency: frm.doc.moneda,
+                        to_currency: base_currency
+                    },
+                    callback: function(r) {
+                        if (r.message) {
+                            frm.set_value('tasa_de_cambio', r.message);
+                        }
+                    }
+                });
+            }
+        });
+    }
+}
+
+function calculate_base_amount(frm) {
+    if (frm.doc.importe && frm.doc.tasa_de_cambio) {
+        frm.set_value('importe_base', flt(frm.doc.importe) * flt(frm.doc.tasa_de_cambio));
+    } else {
+        frm.set_value('importe_base', 0);
+    }
 }

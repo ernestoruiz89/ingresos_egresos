@@ -33,7 +33,10 @@ def execute(filters=None):
             "tipo",
             "clasificacion",
             "referencia",
+            "moneda",
             "importe",
+            "tasa_de_cambio",
+            "importe_base",
             "descripcion",
             "vinculado"
         ],
@@ -47,8 +50,11 @@ def execute(filters=None):
         {"label": "Fecha de Registro", "fieldname": "fecha_de_registro", "fieldtype": "Date", "width": 120},
         {"label": "Tipo", "fieldname": "tipo", "fieldtype": "Data", "width": 100},
         {"label": "Clasificación", "fieldname": "clasificacion", "fieldtype": "Data", "width": 120},
-        {"label": "Referencia", "fieldname": "referencia", "fieldtype": "Data", "width": 200},
+        {"label": "Referencia", "fieldname": "referencia", "fieldtype": "Data", "width": 150},
+        {"label": "Moneda", "fieldname": "moneda", "fieldtype": "Link", "options": "Currency", "width": 80},
         {"label": "Importe", "fieldname": "importe", "fieldtype": "Currency", "width": 120},
+        {"label": "TC", "fieldname": "tasa_de_cambio", "fieldtype": "Float", "width": 80},
+        {"label": "Importe Base", "fieldname": "importe_base", "fieldtype": "Currency", "width": 120},
         {"label": "Estado", "fieldname": "estado", "fieldtype": "Data", "width": 100},
         {"label": "Descripción", "fieldname": "descripcion", "fieldtype": "Text", "width": 200},
     ]

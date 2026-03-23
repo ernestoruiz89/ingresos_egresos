@@ -33,25 +33,25 @@ def get_columns():
 			"width": 100
 		},
 		{
-			"label": _("Entradas"),
+			"label": _("Entradas (Base)"),
 			"fieldname": "ingresos",
 			"fieldtype": "Currency",
 			"width": 120
 		},
 		{
-			"label": _("Salidas"),
+			"label": _("Salidas (Base)"),
 			"fieldname": "egresos",
 			"fieldtype": "Currency",
 			"width": 120
 		},
 		{
-			"label": _("Flujo Neto"),
+			"label": _("Flujo Neto (Base)"),
 			"fieldname": "neto",
 			"fieldtype": "Currency",
 			"width": 120
 		},
 		{
-			"label": _("Saldo Acumulado"),
+			"label": _("Saldo Acumulado (Base)"),
 			"fieldname": "saldo_acumulado",
 			"fieldtype": "Currency",
 			"width": 140
@@ -63,14 +63,14 @@ def get_data(filters):
 	if filters.get("sucursal"):
 		condiciones += f" AND sucursal = '{filters.get('sucursal')}'"
 	
-	# Obtener movimientos agrupados por sucursal, fecha y estado de vinculación
+	# Obtener movimientos agrupados por sucursal, fecha y estado de vinculación (todo en base)
 	movimientos = frappe.db.sql(f"""
 		SELECT 
 			sucursal,
 			fecha_de_registro as fecha,
             CASE WHEN vinculado = 1 THEN 'Cerrado' ELSE 'Pendiente' END as estado,
-			SUM(CASE WHEN tipo = 'Ingreso' THEN importe ELSE 0 END) as ingresos,
-			SUM(CASE WHEN tipo = 'Egreso' THEN importe ELSE 0 END) as egresos
+			SUM(CASE WHEN tipo = 'Ingreso' THEN importe_base ELSE 0 END) as ingresos,
+			SUM(CASE WHEN tipo = 'Egreso' THEN importe_base ELSE 0 END) as egresos
 		FROM `tabMovimiento`
 		WHERE docstatus < 2
 		AND fecha_de_registro BETWEEN %s AND %s
@@ -80,12 +80,10 @@ def get_data(filters):
 	""", (filters.get("from_date"), filters.get("to_date")), as_dict=1)
 
 	# Calcular Saldo Inicial (antes de la fecha 'from_date')
-	# Incluimos históricos tanto cerrados como pendientes si están antes del periodo?
-    # Generalmente el saldo inicial se basa en lo consolidado, pero si queremos proyectar flujo...
-    # Para ser consistentes con el dashboard, incluiremos docstatus < 2
+	# Usando importe_base
 	saldo_inicial = frappe.db.sql(f"""
 		SELECT 
-			SUM(CASE WHEN tipo = 'Ingreso' THEN importe ELSE -importe END) as saldo
+			SUM(CASE WHEN tipo = 'Ingreso' THEN importe_base ELSE -importe_base END) as saldo
 		FROM `tabMovimiento`
 		WHERE docstatus < 2
 		AND fecha_de_registro < %s
@@ -94,16 +92,6 @@ def get_data(filters):
 
 	data = []
 	saldo_acumulado = flt(saldo_inicial)
-
-	# Si queremos mostrar una fila inicial con saldo anterior (opcional)
-	# data.append({
-	# 	"fecha": add_days(filters.get("from_date"), -1),
-	# 	"ingresos": 0,
-	# 	"egresos": 0,
-	# 	"neto": 0,
-	# 	"saldo_acumulado": saldo_acumulado,
-	# 	"is_opening": True
-	# })
 
 	for row in movimientos:
 		neto = flt(row.ingresos) - flt(row.egresos)

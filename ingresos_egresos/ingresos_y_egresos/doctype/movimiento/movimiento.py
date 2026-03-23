@@ -1,9 +1,23 @@
 import frappe
 from frappe.model.document import Document
-from frappe.utils import getdate
+from frappe.utils import getdate, flt
 
 class Movimiento(Document):
     def validate(self):
+        # Establecer valores por defecto de moneda si no existen
+        if not self.moneda:
+            moneda_base = frappe.db.get_single_value("IE Configuracion", "moneda_base")
+            if moneda_base:
+                self.moneda = moneda_base
+            else:
+                frappe.throw("Debe configurar la Moneda Base en 'IE Configuracion'")
+
+        if not self.tasa_de_cambio or self.tasa_de_cambio <= 0:
+            self.tasa_de_cambio = 1.0
+
+        # Calcular importe base
+        self.importe_base = flt(self.importe) * flt(self.tasa_de_cambio)
+
         # Verificar que la sucursal y la fecha de registro estén definidas
         if not self.sucursal or not self.fecha_de_registro:
             frappe.throw("Debe definir una sucursal y una fecha de registro.")

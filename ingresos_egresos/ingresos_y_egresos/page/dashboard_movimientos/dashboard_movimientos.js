@@ -858,6 +858,16 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                     reqd: 1
                 },
                 {
+                    label: 'Moneda',
+                    fieldname: 'moneda',
+                    fieldtype: 'Link',
+                    options: 'Currency',
+                    reqd: 1,
+                    onchange: function() {
+                        // Opcional: auto setear la moneda base si no hay nada
+                    }
+                },
+                {
                     fieldtype: 'HTML',
                     options: `<p class="text-muted small">${has_previous_closure ?
                         'La fecha de inicio está bloqueada para dar continuidad al último cierre.' :
@@ -871,9 +881,17 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                     return;
                 }
 
-                frappe.confirm(`¿Está seguro de generar el cierre del <b>${values.fecha_inicio}</b> al <b>${values.fecha_final}</b>?`, () => {
+                frappe.confirm(`¿Está seguro de generar el cierre del <b>${values.fecha_inicio}</b> al <b>${values.fecha_final}</b> para la moneda <b>${values.moneda}</b>?`, () => {
                     create_cierre(d, values);
                 });
+            }
+        });
+
+        // Set default moneda to base currency
+        frappe.db.get_value('IE Configuracion', 'IE Configuracion', 'moneda_base')
+        .then(r => {
+            if (r && r.message && r.message.moneda_base) {
+                d.set_value('moneda', r.message.moneda_base);
             }
         });
 
@@ -889,6 +907,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                     sucursal: values.sucursal,
                     fecha_inicio: values.fecha_inicio,
                     fecha_final: values.fecha_final,
+                    moneda: values.moneda,
                     docstatus: 1 // Submit inmediato para aplicar cambios
                 }
             },
