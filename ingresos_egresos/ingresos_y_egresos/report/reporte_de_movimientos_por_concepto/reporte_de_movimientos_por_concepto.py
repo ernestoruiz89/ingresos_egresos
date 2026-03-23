@@ -39,7 +39,7 @@ def get_columns():
 			"width": 100
 		},
 		{
-			"label": _("Monto Total"),
+			"label": _("Monto Total (Base)"),
 			"fieldname": "total",
 			"fieldtype": "Currency",
 			"width": 140
@@ -60,14 +60,14 @@ def get_data(filters):
 	if filters.get("type"):
 		condiciones += f" AND tipo = '{filters.get('type')}'"
 
-	# Obtener datos agrupados por Sucursal, Clasificación y Estado de Vinculación
+	# Obtener datos agrupados por Sucursal, Clasificación y Estado de Vinculación (en moneda base)
 	data = frappe.db.sql(f"""
 		SELECT 
 			sucursal,
 			clasificacion, 
             CASE WHEN vinculado = 1 THEN 'Cerrado' ELSE 'Pendiente' END as estado,
 			COUNT(*) as cantidad, 
-			SUM(importe) as total
+			SUM(importe_base) as total
 		FROM `tabMovimiento` 
 		WHERE docstatus < 2
 		AND fecha_de_registro BETWEEN %s AND %s

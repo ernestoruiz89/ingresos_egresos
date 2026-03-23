@@ -9,12 +9,16 @@
   "sucursal",
   "fecha_inicio",
   "fecha_final",
+  "moneda",
   "actualizar_movimientos",
   "ingresos",
   "egresos",
   "total_ingresos",
+  "total_ingresos_base",
   "total_egresos",
+  "total_egresos_base",
   "saldo_final",
+  "saldo_final_base",
   "amended_from",
   "color"
  ],
@@ -55,6 +59,14 @@
    "label": "Fecha Final"
   },
   {
+   "fieldname": "moneda",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Moneda",
+   "options": "Currency",
+   "reqd": 1
+  },
+  {
    "fieldname": "ingresos",
    "fieldtype": "Table",
    "label": "Movimientos Vinculados de Ingreso",
@@ -73,15 +85,33 @@
    "read_only": 1
   },
   {
+   "fieldname": "total_ingresos_base",
+   "fieldtype": "Float",
+   "label": "Total Ingresos (Base)",
+   "read_only": 1
+  },
+  {
    "fieldname": "total_egresos",
    "fieldtype": "Float",
    "label": "Total Egresos",
    "read_only": 1
   },
   {
+   "fieldname": "total_egresos_base",
+   "fieldtype": "Float",
+   "label": "Total Egresos (Base)",
+   "read_only": 1
+  },
+  {
    "fieldname": "saldo_final",
    "fieldtype": "Currency",
    "label": "Saldo Final",
+   "read_only": 1
+  },
+  {
+   "fieldname": "saldo_final_base",
+   "fieldtype": "Currency",
+   "label": "Saldo Final (Base)",
    "read_only": 1
   },
   {

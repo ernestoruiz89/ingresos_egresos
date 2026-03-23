@@ -14,6 +14,9 @@
   "column_break_jtol",
   "referencia",
   "importe",
+  "moneda",
+  "tasa_de_cambio",
+  "importe_base",
   "section_break_jkrc",
   "descripcion",
   "vinculado",
@@ -69,6 +72,27 @@
    "fieldtype": "Float",
    "in_list_view": 1,
    "label": "Importe"
+  },
+  {
+   "fieldname": "moneda",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Moneda",
+   "options": "Currency",
+   "reqd": 1
+  },
+  {
+   "fieldname": "tasa_de_cambio",
+   "fieldtype": "Float",
+   "label": "Tasa de Cambio",
+   "default": "1.0",
+   "reqd": 1
+  },
+  {
+   "fieldname": "importe_base",
+   "fieldtype": "Float",
+   "label": "Importe Base",
+   "read_only": 1
   },
   {
    "fieldname": "section_break_jkrc",
