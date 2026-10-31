@@ -433,3 +433,39 @@ class TestPOSIntegration(IntegrationTestCase):
         self.assertEqual(frappe.db.count(pos.CLOSURE,{"turno_pos":opening.name,"docstatus":1}),1)
         self.assertEqual(pos.retry(opening.name)["estado"],pos.OPEN)
         self.assertEqual(frappe.db.count(pos.CLOSURE,{"turno_pos":opening.name,"docstatus":1}),0)
+
+    def test_store_shift_real_sale_manual_accounting_and_joint_closure_reconcile(self):
+        from ingresos_egresos import accounting
+        # Use the actual ERPNext Cash payment account, not another valid cash account.
+        self.cash_account=frappe.db.get_value("Mode of Payment Account",{"parent":"Cash","company":self.company},"default_account") or self.cash_account
+        config=frappe.get_single("IE Configuracion")
+        config.append("cuentas_caja",dict(sucursal=self.branch,moneda=self.currency,company=self.company,
+            cuenta_caja=self.cash_account,centro_de_costos=self.cost_center));config.save()
+        def cash_balance():
+            return float(frappe.db.sql("SELECT COALESCE(SUM(debit-credit),0) FROM `tabGL Entry` WHERE account=%s AND is_cancelled=0",self.cash_account)[0][0])
+        before=cash_balance()
+        opening=self.opening(amount=100);self.real_invoice(opening)
+        income=self.manual(opening,amount=50)["name"]
+        expense=self.manual(opening,"Egreso",amount=20)["name"]
+        options=[]
+        for row in accounting.get_preview([income,expense]):
+            options.append(dict(name=row["name"],modified=row["modified"],cuenta_contrapartida=self.income if row["tipo"]=="Ingreso" else self.expense,
+                centro_de_costos=self.cost_center,tasa_empresa=row["tasa_empresa"]))
+        self.assertEqual(accounting.post_movements(options)["status"],"posted")
+        self.assertTrue(all(row["resultado"]=="Omitido" for row in accounting.post_movements(options)["results"]))
+        self.assertEqual(pos.report(opening.name)["esperado_empresa"]["Cash"],230)
+        result=self.close(opening)
+        self.assertEqual(result["estado"],pos.CLOSED,result)
+        self.assertEqual(cash_balance()-before,130)
+        self.assertEqual(frappe.db.count("Journal Entry",{"custom_ie_movimiento":["in",[income,expense]],"docstatus":1}),2)
+
+    def test_pos_manual_expense_can_capture_fixed_asset_details(self):
+        item=frappe.db.get_value("Item",{"is_fixed_asset":1,"is_stock_item":0,"disabled":0},"name")
+        location=frappe.get_doc(dict(doctype="Location",location_name="IE POS Local "+self.suffix)).insert().name
+        opening=self.opening()
+        result=pos.register_movement(opening.name,"Egreso","Devoluciones POS",100,self.currency,"Cash",1,1,
+            request_id="pos-fixed-asset",es_activo=1,item_activo=item,ubicacion_activo=location,
+            fecha_uso_activo=nowdate(),vida_util_meses=60)
+        doc=frappe.get_doc("Movimiento",result["name"])
+        self.assertEqual((doc.es_activo,doc.item_activo,doc.turno_pos),(1,item,opening.name))
+        self.assertEqual(pos.report(opening.name)["esperado_empresa"]["Cash"],0)

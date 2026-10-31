@@ -1,4 +1,5 @@
-frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
+frappe.pages['dashboard-movimientos'].on_page_load = async function (wrapper) {
+    await frappe.require("ie_assets.bundle.js");
     var page = frappe.ui.make_app_page({
         parent: wrapper,
         title: 'Dashboard de Control',
@@ -392,7 +393,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
         });
     }
 
-    function movement_dialog_layout(fields) {
+    function movement_dialog_layout(fields, tipo, doc = {}, read_only = false) {
         const controls = Object.fromEntries(fields.filter(field => field.fieldname).map(field => [field.fieldname, field]));
         controls.moneda_base.hidden = 1;
         if (page.base_currency) controls.importe_base.label = `Importe base (${page.base_currency})`;
@@ -404,6 +405,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
             {fieldtype: 'Section Break', label: 'Importe y moneda'},
             controls.importe, controls.tasa_de_cambio,
             {fieldtype: 'Column Break'}, controls.moneda, controls.importe_base, controls.moneda_base,
+            ...frappe.ie_assets.fields(tipo, doc, read_only),
             {fieldtype: 'Section Break', label: 'Descripción y soportes'}, controls.descripcion,
             {fieldtype: 'Column Break'},
             ...fields.filter(field => ['file_upload_area', 'existing_attachments', 'new_file_upload_area'].includes(field.fieldname))
@@ -481,7 +483,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                             fieldtype: 'HTML',
                             label: 'Soportes (Drag & Drop)'
                         }
-                    ]),
+                    ], tipo),
                     primary_action_label: 'Registrar',
                     primary_action: function (values) {
                         values.tipo = tipo;
@@ -490,6 +492,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                 });
 
                 frappe.ie_currency.bind_dialog(d);
+                frappe.ie_assets.bind(d);
                 // ... (Drag & Drop rendering code) ...
                 let $wrapper = d.fields_dict.file_upload_area.$wrapper;
                 $wrapper.html(`
@@ -534,7 +537,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
         page.opening_dialog = true;
 
         frappe.db.get_doc('Movimiento', name).then(doc => {
-            read_only = read_only || Boolean(doc.turno_pos);
+            read_only = read_only || Boolean(doc.turno_pos) || doc.estado_contable === 'Contabilizado';
             // Obtener opciones de clasificación
             frappe.call({
                 method: 'ingresos_egresos.ingresos_y_egresos.doctype.movimiento.movimiento.get_code_name_options',
@@ -542,6 +545,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                 callback: function (r_opts) {
                     page.opening_dialog = false;
                     let clasif_options = r_opts.message || [];
+                    if (doc.clasificacion && !clasif_options.includes(doc.clasificacion)) clasif_options.push(doc.clasificacion);
 
                     // Obtener adjuntos existentes
                     frappe.call({
@@ -630,9 +634,9 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                             let d = new frappe.ui.Dialog({
                                 title: read_only ? `Ver ${doc.tipo}` : `Editar ${doc.tipo}`,
                                 size: 'large',
-                                fields: movement_dialog_layout(fields),
+                                fields: movement_dialog_layout(fields, doc.tipo, doc, read_only),
                                 primary_action_label: read_only ? null : 'Guardar Cambios',
-                                secondary_action_label: read_only ? null : 'Eliminar Registro',
+                                secondary_action_label: read_only || doc.asiento_contable ? null : 'Eliminar Registro',
                                 secondary_action: function () {
                                     frappe.confirm('¿Está seguro de que desea eliminar este registro?', () => {
                                         frappe.call({
@@ -772,6 +776,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                             }
 
                             frappe.ie_currency.bind_dialog(d, doc, read_only);
+                            if (!read_only) frappe.ie_assets.bind(d, doc);
                             d.show();
                         }
                     });

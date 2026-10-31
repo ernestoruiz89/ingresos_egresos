@@ -6,39 +6,423 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "movimiento_tab",
   "section_break_xcfy",
   "sucursal",
-  "fecha_de_registro",
   "tipo",
   "clasificacion",
   "column_break_jtol",
+  "fecha_de_registro",
   "referencia",
-  "importe",
+  "importes_section",
   "moneda",
+  "importe",
   "tasa_de_cambio",
+  "importes_column",
+  "moneda_base",
   "importe_base",
+  "es_activo",
+  "datos_activo_section",
+  "item_activo",
+  "nombre_activo",
+  "categoria_activo",
+  "activo_column",
+  "ubicacion_activo",
+  "fecha_uso_activo",
+  "vida_util_meses",
+  "valor_residual",
   "section_break_jkrc",
   "descripcion",
+  "contabilidad_tab",
+  "contabilidad_section",
+  "estado_contable",
+  "asiento_contable",
+  "activo_fijo",
+  "contabilidad_column",
+  "company",
+  "cuentas_section",
+  "cuenta_caja",
+  "cuenta_contrapartida",
+  "party_type",
+  "party",
+  "centro_de_costos",
+  "cuentas_column",
+  "moneda_empresa",
+  "tasa_empresa",
+  "importe_empresa",
+  "auditoria_contable_section",
+  "fecha_contabilizacion",
+  "contabilizado_por",
+  "seguimiento_tab",
+  "cierre_section",
   "vinculado",
-  "amended_from",
+  "cierre_column",
   "cierre",
-  "moneda_base",
+  "amended_from",
+  "pos_section",
   "turno_pos",
   "fecha_operacion",
   "medio_pago",
+  "pos_column",
   "origen_pos",
   "documento_origen_tipo",
   "documento_origen",
-  "clave_origen_pos",
-  "company",
-  "moneda_empresa",
-  "tasa_empresa",
-  "importe_empresa"
+  "clave_origen_pos"
  ],
  "fields": [
   {
+   "fieldname": "movimiento_tab",
+   "fieldtype": "Tab Break",
+   "label": "Movimiento"
+  },
+  {
    "fieldname": "section_break_xcfy",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Datos del movimiento"
+  },
+  {
+   "fieldname": "sucursal",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Sucursal",
+   "options": "Branch"
+  },
+  {
+   "fieldname": "tipo",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Tipo",
+   "options": "Ingreso\nEgreso"
+  },
+  {
+   "fieldname": "clasificacion",
+   "fieldtype": "Select",
+   "label": "Clasificación",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "column_break_jtol",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Today",
+   "fieldname": "fecha_de_registro",
+   "fieldtype": "Date",
+   "label": "Fecha de Registro"
+  },
+  {
+   "fieldname": "referencia",
+   "fieldtype": "Data",
+   "label": "Referencia"
+  },
+  {
+   "fieldname": "importes_section",
+   "fieldtype": "Section Break",
+   "label": "Importes y conversión"
+  },
+  {
+   "fieldname": "moneda",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Moneda",
+   "options": "Currency",
+   "reqd": 1
+  },
+  {
+   "fieldname": "importe",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Importe",
+   "options": "moneda"
+  },
+  {
+   "fieldname": "tasa_de_cambio",
+   "fieldtype": "Float",
+   "label": "Tasa de Cambio",
+   "reqd": 1,
+   "precision": "9",
+   "description": "Unidades de moneda base por 1 unidad de la moneda del movimiento."
+  },
+  {
+   "fieldname": "importes_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "moneda_base",
+   "fieldtype": "Link",
+   "label": "Moneda Base",
+   "options": "Currency",
+   "read_only": 1,
+   "hidden": 0
+  },
+  {
+   "fieldname": "importe_base",
+   "fieldtype": "Currency",
+   "label": "Importe Base",
+   "read_only": 1,
+   "options": "moneda_base"
+  },
+  {
+   "fieldname": "es_activo",
+   "fieldtype": "Check",
+   "label": "Es activo fijo",
+   "default": "0",
+   "depends_on": "eval:doc.tipo==\"Egreso\""
+  },
+  {
+   "fieldname": "datos_activo_section",
+   "fieldtype": "Section Break",
+   "label": "Activo fijo",
+   "depends_on": "es_activo"
+  },
+  {
+   "fieldname": "item_activo",
+   "fieldtype": "Link",
+   "label": "Artículo de activo fijo",
+   "options": "Item",
+   "mandatory_depends_on": "es_activo"
+  },
+  {
+   "fieldname": "nombre_activo",
+   "fieldtype": "Data",
+   "label": "Nombre del activo"
+  },
+  {
+   "fieldname": "categoria_activo",
+   "fieldtype": "Link",
+   "label": "Categoría de activo",
+   "options": "Asset Category",
+   "read_only": 1,
+   "fetch_from": "item_activo.asset_category"
+  },
+  {
+   "fieldname": "activo_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "ubicacion_activo",
+   "fieldtype": "Link",
+   "label": "Ubicación del activo",
+   "options": "Location",
+   "mandatory_depends_on": "es_activo"
+  },
+  {
+   "fieldname": "fecha_uso_activo",
+   "fieldtype": "Date",
+   "label": "Disponible para uso desde",
+   "mandatory_depends_on": "es_activo"
+  },
+  {
+   "fieldname": "vida_util_meses",
+   "fieldtype": "Int",
+   "label": "Vida útil en meses",
+   "description": "Depreciación lineal mensual."
+  },
+  {
+   "fieldname": "valor_residual",
+   "fieldtype": "Currency",
+   "label": "Valor residual",
+   "options": "moneda",
+   "default": "0"
+  },
+  {
+   "fieldname": "section_break_jkrc",
+   "fieldtype": "Section Break",
+   "label": "Descripción"
+  },
+  {
+   "fieldname": "descripcion",
+   "fieldtype": "Small Text",
+   "label": "Descripción"
+  },
+  {
+   "fieldname": "contabilidad_tab",
+   "fieldtype": "Tab Break",
+   "label": "Contabilidad"
+  },
+  {
+   "fieldname": "contabilidad_section",
+   "fieldtype": "Section Break",
+   "label": "Estado de contabilización"
+  },
+  {
+   "fieldname": "estado_contable",
+   "label": "Estado contable",
+   "fieldtype": "Select",
+   "read_only": 1,
+   "no_copy": 1,
+   "allow_on_submit": 1,
+   "options": "Pendiente\nContabilizado\nAsiento anulado\nGestionado por POS",
+   "default": "Pendiente",
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "asiento_contable",
+   "label": "Asiento contable",
+   "fieldtype": "Link",
+   "read_only": 1,
+   "no_copy": 1,
+   "allow_on_submit": 1,
+   "options": "Journal Entry",
+   "in_list_view": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "activo_fijo",
+   "fieldtype": "Link",
+   "label": "Activo fijo vinculado",
+   "options": "Asset",
+   "read_only": 1,
+   "no_copy": 1,
+   "allow_on_submit": 1,
+   "depends_on": "activo_fijo"
+  },
+  {
+   "fieldname": "contabilidad_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Empresa",
+   "options": "Company",
+   "read_only": 1,
+   "allow_on_submit": 1
+  },
+  {
+   "fieldname": "cuentas_section",
+   "fieldtype": "Section Break",
+   "label": "Cuentas y conversión contable",
+   "depends_on": "eval:doc.asiento_contable || doc.turno_pos"
+  },
+  {
+   "fieldname": "cuenta_caja",
+   "label": "Cuenta de caja",
+   "fieldtype": "Link",
+   "read_only": 1,
+   "no_copy": 1,
+   "allow_on_submit": 1,
+   "options": "Account"
+  },
+  {
+   "fieldname": "cuenta_contrapartida",
+   "label": "Cuenta contrapartida",
+   "fieldtype": "Link",
+   "read_only": 1,
+   "no_copy": 1,
+   "allow_on_submit": 1,
+   "options": "Account"
+  },
+  {
+   "fieldname": "party_type",
+   "fieldtype": "Link",
+   "label": "Tipo de tercero",
+   "options": "Party Type",
+   "read_only": 1,
+   "no_copy": 1,
+   "allow_on_submit": 1,
+   "depends_on": "party_type"
+  },
+  {
+   "fieldname": "party",
+   "fieldtype": "Dynamic Link",
+   "label": "Tercero",
+   "options": "party_type",
+   "read_only": 1,
+   "no_copy": 1,
+   "allow_on_submit": 1,
+   "depends_on": "party"
+  },
+  {
+   "fieldname": "centro_de_costos",
+   "label": "Centro de costos",
+   "fieldtype": "Link",
+   "read_only": 1,
+   "no_copy": 1,
+   "allow_on_submit": 1,
+   "options": "Cost Center"
+  },
+  {
+   "fieldname": "cuentas_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "moneda_empresa",
+   "fieldtype": "Link",
+   "label": "Moneda de empresa",
+   "options": "Currency",
+   "read_only": 1,
+   "allow_on_submit": 1
+  },
+  {
+   "fieldname": "tasa_empresa",
+   "fieldtype": "Float",
+   "label": "Tasa a moneda de empresa",
+   "precision": "9",
+   "read_only": 1,
+   "allow_on_submit": 1
+  },
+  {
+   "fieldname": "importe_empresa",
+   "fieldtype": "Currency",
+   "label": "Importe en empresa",
+   "options": "moneda_empresa",
+   "read_only": 1,
+   "allow_on_submit": 1
+  },
+  {
+   "fieldname": "auditoria_contable_section",
+   "fieldtype": "Section Break",
+   "label": "Auditoría contable",
+   "collapsible": 1,
+   "depends_on": "asiento_contable"
+  },
+  {
+   "fieldname": "fecha_contabilizacion",
+   "label": "Fecha y hora de contabilización",
+   "fieldtype": "Datetime",
+   "read_only": 1,
+   "no_copy": 1,
+   "allow_on_submit": 1
+  },
+  {
+   "fieldname": "contabilizado_por",
+   "label": "Contabilizado por",
+   "fieldtype": "Link",
+   "read_only": 1,
+   "no_copy": 1,
+   "allow_on_submit": 1,
+   "options": "User"
+  },
+  {
+   "fieldname": "seguimiento_tab",
+   "fieldtype": "Tab Break",
+   "label": "Seguimiento"
+  },
+  {
+   "fieldname": "cierre_section",
+   "fieldtype": "Section Break",
+   "label": "Cierre de movimientos"
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "vinculado",
+   "fieldtype": "Check",
+   "label": "Vinculado a Cierre",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cierre_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "cierre",
+   "fieldtype": "Link",
+   "label": "Cierre",
+   "options": "Registro de Cierre de Movimiento",
+   "read_only": 1
   },
   {
    "fieldname": "amended_from",
@@ -51,104 +435,10 @@
    "search_index": 1
   },
   {
-   "default": "Today",
-   "fieldname": "fecha_de_registro",
-   "fieldtype": "Date",
-   "in_list_view": 1,
-   "label": "Fecha de Registro"
-  },
-  {
-   "fieldname": "tipo",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Tipo",
-   "options": "Ingreso\nEgreso"
-  },
-  {
-   "fieldname": "clasificacion",
-   "fieldtype": "Select",
-   "label": "Clasificación"
-  },
-  {
-   "fieldname": "column_break_jtol",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "referencia",
-   "fieldtype": "Data",
-   "label": "Referencia"
-  },
-  {
-   "fieldname": "importe",
-   "fieldtype": "Currency",
-   "in_list_view": 1,
-   "label": "Importe",
-   "options": "moneda"
-  },
-  {
-   "fieldname": "moneda",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Moneda",
-   "options": "Currency",
-   "reqd": 1
-  },
-  {
-   "fieldname": "tasa_de_cambio",
-   "fieldtype": "Float",
-   "label": "Tasa de Cambio",
-   "reqd": 1,
-   "precision": "9",
-   "description": "Unidades de moneda base por 1 unidad de la moneda del movimiento."
-  },
-  {
-   "fieldname": "importe_base",
-   "fieldtype": "Currency",
-   "label": "Importe Base",
-   "read_only": 1,
-   "options": "moneda_base"
-  },
-  {
-   "fieldname": "section_break_jkrc",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "descripcion",
-   "fieldtype": "Small Text",
-   "label": "Descripción"
-  },
-  {
-   "fieldname": "sucursal",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Sucursal",
-   "options": "Branch"
-  },
-  {
-   "allow_on_submit": 1,
-   "default": "0",
-   "fieldname": "vinculado",
-   "fieldtype": "Check",
-   "label": "Vinculado a Cierre",
-   "read_only": 1
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "cierre",
-   "fieldtype": "Link",
-   "label": "Cierre",
-   "options": "Registro de Cierre de Movimiento",
-   "read_only": 1
-  },
-  {
-   "fieldname": "moneda_base",
-   "fieldtype": "Link",
-   "label": "Moneda Base",
-   "options": "Currency",
-   "read_only": 1,
-   "hidden": 1
+   "fieldname": "pos_section",
+   "fieldtype": "Section Break",
+   "label": "Origen y turno POS",
+   "depends_on": "eval:doc.turno_pos"
   },
   {
    "fieldname": "turno_pos",
@@ -170,6 +460,10 @@
    "label": "Medio de pago",
    "options": "Mode of Payment",
    "read_only": 1
+  },
+  {
+   "fieldname": "pos_column",
+   "fieldtype": "Column Break"
   },
   {
    "fieldname": "origen_pos",
@@ -199,34 +493,6 @@
    "unique": 1,
    "read_only": 1,
    "hidden": 1
-  },
-  {
-   "fieldname": "company",
-   "fieldtype": "Link",
-   "label": "Empresa",
-   "options": "Company",
-   "read_only": 1
-  },
-  {
-   "fieldname": "moneda_empresa",
-   "fieldtype": "Link",
-   "label": "Moneda de empresa",
-   "options": "Currency",
-   "read_only": 1
-  },
-  {
-   "fieldname": "tasa_empresa",
-   "fieldtype": "Float",
-   "label": "Tasa a moneda de empresa",
-   "precision": "9",
-   "read_only": 1
-  },
-  {
-   "fieldname": "importe_empresa",
-   "fieldtype": "Currency",
-   "label": "Importe en empresa",
-   "options": "moneda_empresa",
-   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,

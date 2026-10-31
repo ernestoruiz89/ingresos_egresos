@@ -31,7 +31,7 @@ add_to_apps_screen = [
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/ingresos_egresos/css/ingresos_egresos.css"
-app_include_js = "/assets/ingresos_egresos/js/ie_currency.js"
+app_include_js = ["/assets/ingresos_egresos/js/ie_currency.js", "ie_assets.bundle.js"]
 
 # include js, css files in header of web template
 # web_include_css = "/assets/ingresos_egresos/css/ingresos_egresos.css"
@@ -243,11 +243,20 @@ app_include_js = "/assets/ingresos_egresos/js/ie_currency.js"
 
 before_install = "ingresos_egresos.pos_setup.ensure_roles"
 before_migrate = "ingresos_egresos.pos_setup.ensure_roles"
-after_install = "ingresos_egresos.pos_setup.setup"
-after_migrate = "ingresos_egresos.pos_setup.setup"
+after_install = ["ingresos_egresos.pos_setup.setup", "ingresos_egresos.accounting_setup.setup"]
+after_migrate = ["ingresos_egresos.pos_setup.setup", "ingresos_egresos.accounting_setup.setup"]
 page_js = {"point-of-sale": "public/js/pos_integration.js"}
 
 doc_events = {
+    "Asset": {"before_cancel": "ingresos_egresos.asset_integration.before_asset_cancel",
+        "on_cancel": "ingresos_egresos.asset_integration.after_asset_cancel"},
+    "Journal Entry": {
+        "validate": "ingresos_egresos.accounting.validate_journal",
+        "before_update_after_submit": "ingresos_egresos.accounting.validate_journal",
+        "before_cancel": "ingresos_egresos.accounting.before_journal_cancel",
+        "on_cancel": "ingresos_egresos.accounting.after_journal_cancel",
+        "on_trash": "ingresos_egresos.accounting.before_journal_delete",
+    },
     "POS Opening Entry": {
         "before_submit": "ingresos_egresos.pos_hooks.before_opening_submit",
         "on_submit": "ingresos_egresos.pos_hooks.on_opening_submit",
@@ -274,3 +283,4 @@ doc_events = {
 scheduler_events = {"cron": {"* * * * *": ["ingresos_egresos.pos.reconcile_pending"]}}
 has_permission = {"IE Turno POS": "ingresos_egresos.ingresos_y_egresos.doctype.ie_turno_pos.ie_turno_pos.has_permission"}
 permission_query_conditions = {"IE Turno POS": "ingresos_egresos.ingresos_y_egresos.doctype.ie_turno_pos.ie_turno_pos.get_permission_query_conditions"}
+extend_doctype_class = {"Asset": ["ingresos_egresos.asset_integration.MovementAssetMixin"]}
