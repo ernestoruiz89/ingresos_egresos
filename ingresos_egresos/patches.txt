@@ -4,3 +4,4 @@
 
 [post_model_sync]
 ingresos_egresos.patches.v1_0.update_cierre_saldo_final
+ingresos_egresos.patches.v1_0.complete_multicurrency

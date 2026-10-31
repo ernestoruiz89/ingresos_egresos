@@ -2,7 +2,15 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
 
 class IEConfiguracion(Document):
-    pass
+    def validate(self):
+        from ingresos_egresos.pos_hooks import validate_configuration
+        validate_configuration(self)
+        previous = frappe.db.get_single_value("IE Configuracion", "moneda_base")
+        if previous and previous != self.moneda_base and (
+            frappe.db.exists("Movimiento", {}) or frappe.db.exists("Registro de Cierre de Movimiento", {}) or frappe.db.exists("IE Turno POS", {})
+        ):
+            frappe.throw(_("No se puede cambiar la moneda base porque ya existen movimientos o cierres."))

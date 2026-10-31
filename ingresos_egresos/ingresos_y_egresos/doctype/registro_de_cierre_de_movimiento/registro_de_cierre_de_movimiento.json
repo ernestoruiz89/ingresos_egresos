@@ -20,7 +20,14 @@
   "saldo_final",
   "saldo_final_base",
   "amended_from",
-  "color"
+  "color",
+  "moneda_base",
+  "turno_pos",
+  "pos_closing_entry",
+  "fecha_hora_inicio",
+  "fecha_hora_final",
+  "saldo_apertura_pos",
+  "saldo_apertura_pos_base"
  ],
  "fields": [
   {
@@ -80,39 +87,45 @@
   },
   {
    "fieldname": "total_ingresos",
-   "fieldtype": "Float",
+   "fieldtype": "Currency",
    "label": "Total Ingresos",
-   "read_only": 1
+   "read_only": 1,
+   "options": "moneda"
   },
   {
    "fieldname": "total_ingresos_base",
-   "fieldtype": "Float",
+   "fieldtype": "Currency",
    "label": "Total Ingresos (Base)",
-   "read_only": 1
+   "read_only": 1,
+   "options": "moneda_base"
   },
   {
    "fieldname": "total_egresos",
-   "fieldtype": "Float",
+   "fieldtype": "Currency",
    "label": "Total Egresos",
-   "read_only": 1
+   "read_only": 1,
+   "options": "moneda"
   },
   {
    "fieldname": "total_egresos_base",
-   "fieldtype": "Float",
+   "fieldtype": "Currency",
    "label": "Total Egresos (Base)",
-   "read_only": 1
+   "read_only": 1,
+   "options": "moneda_base"
   },
   {
    "fieldname": "saldo_final",
    "fieldtype": "Currency",
    "label": "Saldo Final",
-   "read_only": 1
+   "read_only": 1,
+   "options": "moneda"
   },
   {
    "fieldname": "saldo_final_base",
    "fieldtype": "Currency",
    "label": "Saldo Final (Base)",
-   "read_only": 1
+   "read_only": 1,
+   "options": "moneda_base"
   },
   {
    "fieldname": "actualizar_movimientos",
@@ -123,6 +136,55 @@
    "fieldname": "color",
    "fieldtype": "Color",
    "label": "Color"
+  },
+  {
+   "fieldname": "moneda_base",
+   "fieldtype": "Link",
+   "label": "Moneda Base",
+   "options": "Currency",
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "turno_pos",
+   "fieldtype": "Link",
+   "label": "Turno POS",
+   "options": "IE Turno POS",
+   "read_only": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "pos_closing_entry",
+   "fieldtype": "Link",
+   "label": "Cierre ERPNext",
+   "options": "POS Closing Entry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "fecha_hora_inicio",
+   "fieldtype": "Datetime",
+   "label": "Apertura del turno",
+   "read_only": 1
+  },
+  {
+   "fieldname": "fecha_hora_final",
+   "fieldtype": "Datetime",
+   "label": "Corte del turno",
+   "read_only": 1
+  },
+  {
+   "fieldname": "saldo_apertura_pos",
+   "fieldtype": "Currency",
+   "label": "Fondo de apertura POS",
+   "options": "moneda",
+   "read_only": 1
+  },
+  {
+   "fieldname": "saldo_apertura_pos_base",
+   "fieldtype": "Currency",
+   "label": "Fondo de apertura POS (Base)",
+   "options": "moneda_base",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,

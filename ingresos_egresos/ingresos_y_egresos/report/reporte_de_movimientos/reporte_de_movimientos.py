@@ -3,23 +3,16 @@
 
 import frappe
 from frappe import _
+from ingresos_egresos.currency import get_base_currency, report_context
 
 
 def execute(filters=None):
     filters = filters or {}
 
-    start_date = filters.get("fecha_inicio")
-    end_date = filters.get("fecha_final")
-    branch = filters.get("sucursal")
+    report_filters = report_context(filters, "fecha_inicio", "fecha_final")[2]
+    base = get_base_currency()
 
-    if not start_date or not end_date:
-        frappe.throw(_("Debe seleccionar una fecha inicial y una fecha final."))
-
-    report_filters = {"fecha_de_registro": ["between", [start_date, end_date]]}
-    if branch:
-        report_filters["sucursal"] = branch
-
-    movements = frappe.get_all(
+    movements = frappe.get_list(
         "Movimiento",
         filters=report_filters,
         fields=[
@@ -34,9 +27,10 @@ def execute(filters=None):
             "tasa_de_cambio",
             "importe_base",
             "descripcion",
-            "vinculado",
+            "vinculado", "turno_pos", "fecha_operacion", "medio_pago", "origen_pos",
         ],
         order_by="fecha_de_registro ASC",
+        limit_page_length=0,
     )
 
     columns = [
@@ -47,14 +41,22 @@ def execute(filters=None):
         {"label": _("Clasificación"), "fieldname": "clasificacion", "fieldtype": "Data", "width": 120},
         {"label": _("Referencia"), "fieldname": "referencia", "fieldtype": "Data", "width": 150},
         {"label": _("Moneda"), "fieldname": "moneda", "fieldtype": "Link", "options": "Currency", "width": 80},
-        {"label": _("Importe"), "fieldname": "importe", "fieldtype": "Currency", "width": 120},
+        {"label": _("Importe"), "fieldname": "importe", "fieldtype": "Currency", "options": "moneda", "width": 120},
         {"label": _("Tasa de Cambio"), "fieldname": "tasa_de_cambio", "fieldtype": "Float", "width": 100},
-        {"label": _("Importe Base"), "fieldname": "importe_base", "fieldtype": "Currency", "width": 120},
+        {"label": _("Importe Base"), "fieldname": "importe_base", "fieldtype": "Currency", "options": "moneda_base", "width": 120},
         {"label": _("Estado"), "fieldname": "estado", "fieldtype": "Data", "width": 100},
         {"label": _("Descripción"), "fieldname": "descripcion", "fieldtype": "Text", "width": 200},
     ]
 
+    columns.append({"label": _("Moneda Base"), "fieldname": "moneda_base", "fieldtype": "Link", "options": "Currency", "width": 90})
+    columns.extend([
+        {"label": _("Turno POS"), "fieldname": "turno_pos", "fieldtype": "Link", "options": "IE Turno POS", "width": 160},
+        {"label": _("Fecha de operación"), "fieldname": "fecha_operacion", "fieldtype": "Datetime", "width": 160},
+        {"label": _("Medio de pago"), "fieldname": "medio_pago", "fieldtype": "Link", "options": "Mode of Payment", "width": 120},
+        {"label": _("Origen POS"), "fieldname": "origen_pos", "fieldtype": "Data", "width": 110},
+    ])
     for movement in movements:
+        movement["moneda_base"] = base
         movement["estado"] = _("Cerrado") if movement.get("vinculado") else _("Pendiente")
 
     return columns, movements

@@ -5,7 +5,10 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "moneda_base"
+  "moneda_base",
+  "integracion_pos_section",
+  "integrar_pos",
+  "perfiles_pos"
  ],
  "fields": [
   {
@@ -15,6 +18,24 @@
    "label": "Moneda Base",
    "options": "Currency",
    "reqd": 1
+  },
+  {
+   "fieldname": "integracion_pos_section",
+   "fieldtype": "Section Break",
+   "label": "Integración POS de ERPNext"
+  },
+  {
+   "fieldname": "integrar_pos",
+   "fieldtype": "Check",
+   "label": "Integrar con POS de ERPNext",
+   "default": "0",
+   "description": "Requiere todos los POS cerrados y ningún movimiento pendiente en las sucursales vinculadas."
+  },
+  {
+   "fieldname": "perfiles_pos",
+   "fieldtype": "Table",
+   "label": "Perfiles POS y sucursales",
+   "options": "IE Perfil POS"
   }
  ],
  "index_web_pages_for_search": 1,

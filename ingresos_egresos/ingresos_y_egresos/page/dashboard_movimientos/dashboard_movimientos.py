@@ -1,122 +1,74 @@
 import frappe
 from frappe import _
 from frappe.utils import flt, getdate, nowdate
+from ingresos_egresos.currency import aggregate, get_base_currency
+
+
+def empty_totals():
+    return dict(ingresos=0, egresos=0, saldo=0, saldo_anterior=0,
+                detalles=dict(ingresos_vinc=0, ingresos_pend=0, egresos_vinc=0, egresos_pend=0))
+
 
 @frappe.whitelist()
-def get_dashboard_data(sucursal=None, from_date=None, to_date=None):
+def get_dashboard_data(sucursal=None, from_date=None, to_date=None, moneda=None):
     if not sucursal:
         return {}
-
-    # Validar permisos
+    frappe.has_permission("Movimiento", "read", throw=True)
     if not frappe.has_permission("Branch", "read", sucursal):
-         frappe.throw(_("No tiene permisos para acceder a la sucursal seleccionada."))
-
-    # 1. Obtener fecha del último cierre para esta sucursal (necesario para sugerir 'Desde')
-    ultimo_cierre = frappe.db.get_value(
-        "Registro de Cierre de Movimiento",
-        filters={"sucursal": sucursal, "docstatus": 1},
-        fieldname="fecha_final",
-        order_by="fecha_final desc"
-    )
-
-    # 2. Construir filtros para frappe.get_all
-    filtros = {
-        "sucursal": sucursal,
-        "docstatus": ["<", 2] # Incluimos Borradores (0) y Enviados (1)
-    }
-
+        frappe.throw(_("No tiene permisos para acceder a la sucursal seleccionada."))
+    if from_date and to_date and getdate(from_date) > getdate(to_date):
+        frappe.throw(_("La fecha inicial debe ser menor o igual a la fecha final."))
+    base = get_base_currency()
+    filters = {"sucursal": sucursal, "docstatus": ["<", 2]}
+    if moneda:
+        filters["moneda"] = moneda
     if from_date and to_date:
-        filtros["fecha_de_registro"] = ["between", [from_date, to_date]]
-    
-    # 3. Obtener todos los movimientos filtrados para calcular totales (KPIs)
-    # Al usar frappe.get_all aquí y en la tabla, los datos DEBEN coincidir
-    todos_los_movimientos = frappe.get_all(
-        "Movimiento",
-        filters=filtros,
-        fields=["tipo", "importe", "vinculado"]
-    )
+        filters["fecha_de_registro"] = ["between", [from_date, to_date]]
+    elif from_date:
+        filters["fecha_de_registro"] = [">=", from_date]
+    elif to_date:
+        filters["fecha_de_registro"] = ["<=", to_date]
 
-    t_ingresos = 0
-    t_egresos = 0
-    v_ingresos = 0
-    v_egresos = 0
-    p_ingresos = 0
-    p_egresos = 0
-
-    for m in todos_los_movimientos:
-        val = flt(m.importe)
-        tipo = m.tipo
-        is_vinc = m.vinculado
-
-        if tipo == "Ingreso":
-            t_ingresos += val
-            if is_vinc: v_ingresos += val
-            else: p_ingresos += val
-        elif tipo == "Egreso":
-            t_egresos += val
-            if is_vinc: v_egresos += val
-            else: p_egresos += val
-
-    # Calculo de Saldo Inicial y Final
-    saldo_inicial = 0.0
-
+    # Aggregate with exactly the same filters and permissions as the preview.
+    groups = frappe.get_list("Movimiento", filters=filters,
+        fields=["moneda", "tipo", "vinculado", aggregate("sum", "importe", "importe"), aggregate("sum", "importe_base", "importe_base")],
+        group_by="moneda, tipo, vinculado", limit_page_length=0)
+    totals = empty_totals()
+    by_currency = {}
+    for row in groups:
+        entry = by_currency.setdefault(row.moneda, empty_totals())
+        kind = "ingresos" if row.tipo == "Ingreso" else "egresos"
+        detail = kind + ("_vinc" if row.vinculado else "_pend")
+        entry[kind] += flt(row.importe)
+        entry["detalles"][detail] += flt(row.importe)
+        totals[kind] += flt(row.importe_base)
+        totals["detalles"][detail] += flt(row.importe_base)
     if from_date:
-        # 1. Buscar cierre anterior a la fecha de inicio
-        cierre_previo = frappe.db.get_value(
-            "Registro de Cierre de Movimiento",
-            filters={
-                "sucursal": sucursal,
-                "docstatus": 1,
-                "fecha_final": ["<", from_date]
-            },
-            fieldname="saldo_final",
-            order_by="fecha_final desc"
-        )
-
-        if cierre_previo:
-            saldo_inicial = flt(cierre_previo)
-        else:
-            # 2. Si no hay cierre previo, calcular histórico de movimientos anteriores
-            # Esto es necesario si se filtra desde una fecha intermedia sin cierres previos
-            hist_moves = frappe.db.sql("""
-                SELECT SUM(CASE WHEN tipo = 'Ingreso' THEN importe ELSE -importe END)
-                FROM `tabMovimiento`
-                WHERE sucursal = %s
-                AND docstatus = 1
-                AND fecha_de_registro < %s
-            """, (sucursal, from_date))
-            
-            if hist_moves and hist_moves[0][0]:
-                saldo_inicial = flt(hist_moves[0][0])
-    
-    # Saldo actual total = Saldo Inicial + (Ingresos del periodo - Egresos del periodo)
-    saldo_total = saldo_inicial + t_ingresos - t_egresos
-
-    # Últimos 10 movimientos (para la vista previa de la tabla)
-    movimientos_preview = frappe.get_all(
-        "Movimiento",
-        filters=filtros,
-        fields=["name", "fecha_de_registro", "tipo", "clasificacion", "importe", "vinculado", "referencia", "descripcion"],
-        order_by="fecha_de_registro desc, creation desc",
-        limit_page_length=10
-    )
-
-    return {
-        "periodo": {
-            "estado": "Abierto" if not ultimo_cierre or ultimo_cierre < getdate(nowdate()) else "Cerrado hoy",
-            "ultimo_cierre": ultimo_cierre
-        },
-        "totales": {
-            "ingresos": t_ingresos,
-            "egresos": t_egresos,
-            "saldo": saldo_total,
-            "saldo_anterior": saldo_inicial,
-            "detalles": {
-                "ingresos_vinc": v_ingresos,
-                "ingresos_pend": p_ingresos,
-                "egresos_vinc": v_egresos,
-                "egresos_pend": p_egresos
-            }
-        },
-        "movimientos": movimientos_preview
-    }
+        history_filters = {"sucursal": sucursal, "docstatus": ["<", 2], "fecha_de_registro": ["<", from_date]}
+        if moneda:
+            history_filters["moneda"] = moneda
+        history = frappe.get_list("Movimiento", filters=history_filters,
+            fields=["moneda", "tipo", aggregate("sum", "importe", "importe"), aggregate("sum", "importe_base", "importe_base")],
+            group_by="moneda, tipo", limit_page_length=0)
+        for row in history:
+            entry = by_currency.setdefault(row.moneda, empty_totals())
+            sign = 1 if row.tipo == "Ingreso" else -1
+            entry["saldo_anterior"] += sign * flt(row.importe)
+            totals["saldo_anterior"] += sign * flt(row.importe_base)
+    totals["saldo"] = totals["saldo_anterior"] + totals["ingresos"] - totals["egresos"]
+    for entry in by_currency.values():
+        entry["saldo"] = entry["saldo_anterior"] + entry["ingresos"] - entry["egresos"]
+    preview = frappe.get_list("Movimiento", filters=filters,
+        fields=["name", "fecha_de_registro", "tipo", "clasificacion", "importe", "importe_base", "moneda", "vinculado", "referencia", "descripcion"],
+        order_by="fecha_de_registro desc, creation desc", limit_page_length=10)
+    # There is no single closing date across currencies.
+    last = None
+    if moneda:
+        rows = frappe.get_list("Registro de Cierre de Movimiento",
+            filters={"sucursal": sucursal, "moneda": moneda, "docstatus": 1},
+            fields=["fecha_final"], order_by="fecha_final desc", limit_page_length=1)
+        last = rows[0].fecha_final if rows else None
+    return {"moneda_base": base, "totales": totals,
+            "por_moneda": [dict(moneda=currency, **values) for currency, values in sorted(by_currency.items())],
+            "movimientos": preview,
+            "periodo": {"ultimo_cierre": last, "estado": "Cerrado hoy" if last and getdate(last) >= getdate(nowdate()) else "Abierto"}}

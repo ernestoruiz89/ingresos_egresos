@@ -21,7 +21,19 @@
   "descripcion",
   "vinculado",
   "amended_from",
-  "cierre"
+  "cierre",
+  "moneda_base",
+  "turno_pos",
+  "fecha_operacion",
+  "medio_pago",
+  "origen_pos",
+  "documento_origen_tipo",
+  "documento_origen",
+  "clave_origen_pos",
+  "company",
+  "moneda_empresa",
+  "tasa_empresa",
+  "importe_empresa"
  ],
  "fields": [
   {
@@ -56,7 +68,7 @@
   {
    "fieldname": "clasificacion",
    "fieldtype": "Select",
-   "label": "Clasificaci\u00f3n"
+   "label": "Clasificación"
   },
   {
    "fieldname": "column_break_jtol",
@@ -69,9 +81,10 @@
   },
   {
    "fieldname": "importe",
-   "fieldtype": "Float",
+   "fieldtype": "Currency",
    "in_list_view": 1,
-   "label": "Importe"
+   "label": "Importe",
+   "options": "moneda"
   },
   {
    "fieldname": "moneda",
@@ -85,14 +98,16 @@
    "fieldname": "tasa_de_cambio",
    "fieldtype": "Float",
    "label": "Tasa de Cambio",
-   "default": "1.0",
-   "reqd": 1
+   "reqd": 1,
+   "precision": "9",
+   "description": "Unidades de moneda base por 1 unidad de la moneda del movimiento."
   },
   {
    "fieldname": "importe_base",
-   "fieldtype": "Float",
+   "fieldtype": "Currency",
    "label": "Importe Base",
-   "read_only": 1
+   "read_only": 1,
+   "options": "moneda_base"
   },
   {
    "fieldname": "section_break_jkrc",
@@ -101,7 +116,7 @@
   {
    "fieldname": "descripcion",
    "fieldtype": "Small Text",
-   "label": "Descripci\u00f3n"
+   "label": "Descripción"
   },
   {
    "fieldname": "sucursal",
@@ -125,6 +140,92 @@
    "fieldtype": "Link",
    "label": "Cierre",
    "options": "Registro de Cierre de Movimiento",
+   "read_only": 1
+  },
+  {
+   "fieldname": "moneda_base",
+   "fieldtype": "Link",
+   "label": "Moneda Base",
+   "options": "Currency",
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "turno_pos",
+   "fieldtype": "Link",
+   "label": "Turno POS",
+   "options": "IE Turno POS",
+   "read_only": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "fecha_operacion",
+   "fieldtype": "Datetime",
+   "label": "Fecha y hora de operación",
+   "read_only": 1
+  },
+  {
+   "fieldname": "medio_pago",
+   "fieldtype": "Link",
+   "label": "Medio de pago",
+   "options": "Mode of Payment",
+   "read_only": 1
+  },
+  {
+   "fieldname": "origen_pos",
+   "fieldtype": "Select",
+   "label": "Origen POS",
+   "options": "\nManual\nVenta\nDevolucion",
+   "read_only": 1
+  },
+  {
+   "fieldname": "documento_origen_tipo",
+   "fieldtype": "Link",
+   "label": "Tipo de origen",
+   "options": "DocType",
+   "read_only": 1
+  },
+  {
+   "fieldname": "documento_origen",
+   "fieldtype": "Dynamic Link",
+   "label": "Documento de origen",
+   "options": "documento_origen_tipo",
+   "read_only": 1
+  },
+  {
+   "fieldname": "clave_origen_pos",
+   "fieldtype": "Data",
+   "label": "Clave de origen POS",
+   "unique": 1,
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Empresa",
+   "options": "Company",
+   "read_only": 1
+  },
+  {
+   "fieldname": "moneda_empresa",
+   "fieldtype": "Link",
+   "label": "Moneda de empresa",
+   "options": "Currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tasa_empresa",
+   "fieldtype": "Float",
+   "label": "Tasa a moneda de empresa",
+   "precision": "9",
+   "read_only": 1
+  },
+  {
+   "fieldname": "importe_empresa",
+   "fieldtype": "Currency",
+   "label": "Importe en empresa",
+   "options": "moneda_empresa",
    "read_only": 1
   }
  ],

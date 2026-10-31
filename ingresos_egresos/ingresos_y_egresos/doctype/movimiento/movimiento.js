@@ -8,15 +8,15 @@ frappe.ui.form.on('Movimiento', {
     },
     refresh: function (frm) {
         if (frm.doc.docstatus === 0) {
-            // Asegurarnos de que el botón principal sea siempre "Guardar" y no "Enviar" (Submit)
-            // Ya que el envío se hace masivamente desde el doctype "Cierre de Movimiento"
+            // Asegurarnos de que el botÃ³n principal sea siempre "Guardar" y no "Enviar" (Submit)
+            // Ya que el envÃ­o se hace masivamente desde el doctype "Cierre de Movimiento"
             frm.page.set_primary_action(__('Save'), () => frm.save());
 
             if (!frm.is_new()) {
-                // Agregar botón de eliminar en rojo para movimientos no vinculados
+                // Agregar botÃ³n de eliminar en rojo para movimientos no vinculados
                 if (!frm.doc.vinculado) {
                     frm.page.add_inner_button(__('Eliminar Registro'), function () {
-                        frappe.confirm('¿Está seguro de que desea eliminar este registro?', () => {
+                        frappe.confirm('Â¿EstÃ¡ seguro de que desea eliminar este registro?', () => {
                             frappe.call({
                                 method: 'frappe.client.delete',
                                 args: {
@@ -42,33 +42,18 @@ frappe.ui.form.on('Movimiento', {
         if (frm.doc.docstatus === 1) return;
         get_code_name_options(frm, frm.doc.tipo);
     },
-    setup: function(frm) {
-        // Set default currency to base currency on new document
-        if (frm.is_new() && !frm.doc.moneda) {
-            frappe.db.get_value('IE Configuracion', 'IE Configuracion', 'moneda_base')
-            .then(r => {
-                if (r && r.message && r.message.moneda_base) {
-                    frm.set_value('moneda', r.message.moneda_base);
-                }
-            });
-        }
+    onload_post_render: async function(frm) {
+        if (frm.doc.docstatus !== 0) return;
+        const settings = await frappe.ie_currency.settings();
+        await frm.set_value('moneda_base', settings.moneda_base);
+        if (!frm.doc.moneda) await frm.set_value('moneda', settings.moneda_base);
+        frm.set_df_property('tasa_de_cambio', 'read_only', frm.doc.moneda === settings.moneda_base ? 1 : 0);
     },
+    fecha_de_registro: frm => { if (frm.doc.docstatus === 0) return frappe.ie_currency.fetch_rate(frm); },
+    moneda: frm => { if (frm.doc.docstatus === 0) return frappe.ie_currency.fetch_rate(frm); },
+    importe: frm => frappe.ie_currency.calculate(frm),
+    tasa_de_cambio: frm => frappe.ie_currency.calculate(frm)
 
-    fecha_de_registro: function(frm) {
-        fetch_exchange_rate(frm);
-    },
-
-    moneda: function(frm) {
-        fetch_exchange_rate(frm);
-    },
-
-    importe: function(frm) {
-        calculate_base_amount(frm);
-    },
-
-    tasa_de_cambio: function(frm) {
-        calculate_base_amount(frm);
-    }
 });
 
 function get_code_name_options(frm, code_name) {
@@ -92,7 +77,7 @@ function get_code_name_options(frm, code_name) {
                 // Add empty option at start if needed or just set existing
                 frm.set_df_property('clasificacion', 'options', options);
 
-                // Si el valor actual no está en las opciones, limpiar
+                // Si el valor actual no estÃ¡ en las opciones, limpiar
                 if (frm.doc.clasificacion && !options.includes(frm.doc.clasificacion)) {
                     frm.set_value('clasificacion', '');
                 }
@@ -105,46 +90,4 @@ function get_code_name_options(frm, code_name) {
             }
         }
     });
-}
-
-function fetch_exchange_rate(frm) {
-    if (frm.doc.moneda && frm.doc.fecha_de_registro) {
-        frappe.db.get_value('IE Configuracion', 'IE Configuracion', 'moneda_base')
-        .then(r => {
-            let base_currency = '';
-            if (r && r.message && r.message.moneda_base) {
-                base_currency = r.message.moneda_base;
-            }
-
-            if (!base_currency) {
-                return;
-            }
-
-            if (frm.doc.moneda === base_currency) {
-                frm.set_value('tasa_de_cambio', 1.0);
-            } else {
-                frappe.call({
-                    method: 'erpnext.setup.utils.get_exchange_rate',
-                    args: {
-                        transaction_date: frm.doc.fecha_de_registro,
-                        from_currency: frm.doc.moneda,
-                        to_currency: base_currency
-                    },
-                    callback: function(r) {
-                        if (r.message) {
-                            frm.set_value('tasa_de_cambio', r.message);
-                        }
-                    }
-                });
-            }
-        });
-    }
-}
-
-function calculate_base_amount(frm) {
-    if (frm.doc.importe && frm.doc.tasa_de_cambio) {
-        frm.set_value('importe_base', flt(frm.doc.importe) * flt(frm.doc.tasa_de_cambio));
-    } else {
-        frm.set_value('importe_base', 0);
-    }
 }

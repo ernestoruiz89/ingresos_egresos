@@ -3,6 +3,8 @@
 
 frappe.query_reports["Reporte de Flujo de Caja"] = {
     "filters": [
+        {fieldname: "turno_pos", label: __("Turno POS"), fieldtype: "Link", options: "IE Turno POS"},
+        {fieldname: "moneda", label: __("Moneda (vacío: consolidado base)"), fieldtype: "Link", options: "Currency"},
         {
             "fieldname": "company",
             "label": __("Company"),
