@@ -7,9 +7,12 @@
  "field_order": [
   "registro",
   "fecha",
-  "clasificaci\u00f3n",
+  "clasificación",
   "importe",
-  "descripcion"
+  "descripcion",
+  "moneda_base",
+  "moneda",
+  "importe_base"
  ],
  "fields": [
   {
@@ -26,21 +29,46 @@
    "label": "Fecha"
   },
   {
-   "fieldname": "clasificaci\u00f3n",
+   "fieldname": "clasificación",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Clasificaci\u00f3n"
+   "label": "Clasificación"
   },
   {
    "fieldname": "importe",
-   "fieldtype": "Float",
+   "fieldtype": "Currency",
    "in_list_view": 1,
-   "label": "Importe"
+   "label": "Importe",
+   "options": "moneda"
   },
   {
    "fieldname": "descripcion",
    "fieldtype": "Small Text",
    "label": "Descripcion"
+  },
+  {
+   "fieldname": "moneda_base",
+   "fieldtype": "Link",
+   "label": "Moneda Base",
+   "options": "Currency",
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "moneda",
+   "fieldtype": "Link",
+   "label": "Moneda",
+   "options": "Currency",
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "importe_base",
+   "fieldtype": "Currency",
+   "label": "Importe Base",
+   "options": "moneda_base",
+   "read_only": 1,
+   "hidden": 0
   }
  ],
  "index_web_pages_for_search": 1,

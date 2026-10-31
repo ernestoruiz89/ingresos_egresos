@@ -6,6 +6,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.model.naming import make_autoname
 from frappe.utils import flt, getdate
+from ingresos_egresos.currency import get_balance, get_base_currency
 
 
 class RegistrodeCierredeMovimiento(Document):
@@ -25,6 +26,13 @@ class RegistrodeCierredeMovimiento(Document):
         self.color = branch_color
 
     def validate(self):
+        if self.turno_pos:
+            from ingresos_egresos.pos import populate_closure
+            populate_closure(self)
+            return
+        if not self.sucursal or not self.moneda or not self.fecha_inicio or not self.fecha_final:
+            frappe.throw(_("Debe definir una sucursal, un rango de fechas y una moneda."))
+        self.moneda_base = get_base_currency()
         self.fecha_inicio = getdate(self.fecha_inicio)
         self.fecha_final = getdate(self.fecha_final)
 
@@ -43,9 +51,6 @@ class RegistrodeCierredeMovimiento(Document):
         self.validate_date_overlap()
         self.validate_closure_sequence()
 
-        if not self.moneda:
-            frappe.throw(_("Debe especificar la moneda del cierre."))
-
         self.populate_entries_and_totals()
 
     def validate_date_overlap(self):
@@ -53,6 +58,8 @@ class RegistrodeCierredeMovimiento(Document):
             """
             SELECT name, fecha_inicio, fecha_final FROM `tabRegistro de Cierre de Movimiento`
             WHERE sucursal = %s
+            AND COALESCE(turno_pos, '') = ''
+            AND moneda = %s
             AND docstatus = 1
             AND name != %s
             AND (
@@ -64,6 +71,7 @@ class RegistrodeCierredeMovimiento(Document):
             """,
             (
                 self.sucursal,
+                self.moneda,
                 self.name or "new",
                 self.fecha_inicio,
                 self.fecha_final,
@@ -90,46 +98,53 @@ class RegistrodeCierredeMovimiento(Document):
             )
 
     def validate_closure_sequence(self):
-        first_closure_date = frappe.db.get_value(
+        last_closure_date = frappe.db.get_value(
             "Registro de Cierre de Movimiento",
-            filters={"sucursal": self.sucursal, "docstatus": 1},
-            fieldname="fecha_inicio",
-            order_by="fecha_inicio asc",
+            filters={"sucursal": self.sucursal, "moneda": self.moneda, "docstatus": 1,
+                     "turno_pos": ["is", "not set"], "name": ["!=", self.name or "new"]},
+            fieldname="fecha_final",
+            order_by="fecha_final desc",
         )
 
-        if first_closure_date:
-            first_closure_date = getdate(first_closure_date)
-            if self.fecha_inicio < first_closure_date:
+        if last_closure_date:
+            if self.fecha_inicio <= getdate(last_closure_date):
                 frappe.throw(
-                    _("No se puede realizar un cierre antes del primer cierre registrado ({0}).").format(
-                        first_closure_date
+                    _("El cierre debe ser posterior al último cierre de esta sucursal y moneda ({0}).").format(
+                        last_closure_date
                     )
                 )
 
     def populate_entries_and_totals(self):
+        if self.turno_pos:
+            from ingresos_egresos.pos import populate_closure
+            populate_closure(self)
+            return
         if self.docstatus == 2:
             return
 
+        existing_rows = {row.registro: row.as_dict() for row in (self.get("ingresos") or []) + (self.get("egresos") or [])}
         self.set("ingresos", [])
         self.set("egresos", [])
 
         filters = {
             "sucursal": self.sucursal,
             "moneda": self.moneda,
+            "turno_pos": ["is", "not set"],
             "docstatus": ["<", 2],
             "fecha_de_registro": ["between", [self.fecha_inicio, self.fecha_final]],
-            "vinculado": 0,
         }
 
         movements = frappe.get_all(
             "Movimiento",
             filters=filters,
+            or_filters={"vinculado": 0, "cierre": self.name or "new"},
             fields=[
                 "name",
                 "fecha_de_registro",
                 "clasificacion",
                 "importe",
                 "importe_base",
+                "moneda",
                 "descripcion",
                 "tipo",
             ],
@@ -141,13 +156,17 @@ class RegistrodeCierredeMovimiento(Document):
         total_expense_base = 0.0
 
         for movement in movements:
-            row = {
+            row = dict(existing_rows.get(movement.name, {}))
+            row.update({
                 "registro": movement.name,
                 "fecha": movement.fecha_de_registro,
                 "clasificación": movement.clasificacion,
                 "importe": movement.importe,
+                "moneda": movement.moneda,
+                "moneda_base": self.moneda_base,
+                "importe_base": movement.importe_base,
                 "descripcion": movement.descripcion,
-            }
+            })
 
             if movement.tipo == "Ingreso":
                 self.append("ingresos", row)
@@ -162,44 +181,40 @@ class RegistrodeCierredeMovimiento(Document):
         self.total_egresos = total_expense
         self.total_ingresos_base = total_income_base
         self.total_egresos_base = total_expense_base
-        self.saldo_final = self.get_previous_balance("saldo_final") + total_income - total_expense
-        self.saldo_final_base = self.get_previous_balance("saldo_final_base") + total_income_base - total_expense_base
+        previous, previous_base = get_balance(self.sucursal, self.moneda, self.fecha_inicio)
+        self.saldo_final = previous + total_income - total_expense
+        self.saldo_final_base = previous_base + total_income_base - total_expense_base
 
     def get_previous_balance(self, balance_field):
-        previous_balance = frappe.db.get_value(
-            "Registro de Cierre de Movimiento",
-            filters={
-                "sucursal": self.sucursal,
-                "moneda": self.moneda,
-                "docstatus": 1,
-                "fecha_final": ["<", self.fecha_inicio],
-            },
-            fieldname=balance_field,
-            order_by="fecha_final desc",
-        )
+        balances = get_balance(self.sucursal, self.moneda, self.fecha_inicio)
+        return balances[1 if balance_field == "saldo_final_base" else 0]
 
-        if previous_balance is not None:
-            return flt(previous_balance)
+    def before_cancel(self):
+        old_turn=frappe.db.get_value(self.doctype,self.name,"turno_pos")
+        if self.turno_pos or old_turn:
+            if not frappe.flags.ie_pos_internal:
+                frappe.throw(_("Utilice la anulación conjunta del turno POS."))
+            return
+        if frappe.db.exists("Registro de Cierre de Movimiento", {
+            "sucursal": self.sucursal, "moneda": self.moneda, "docstatus": 1,
+            "turno_pos": ["is", "not set"], "fecha_final": [">", self.fecha_final], "name": ["!=", self.name],
+        }):
+            frappe.throw(_("Primero debe cancelar los cierres posteriores de esta sucursal y moneda."))
 
-        movement_field = "importe_base" if balance_field == "saldo_final_base" else "importe"
-        historical_balance = frappe.db.sql(
-            f"""
-            SELECT SUM(CASE WHEN tipo = 'Ingreso' THEN {movement_field} ELSE -{movement_field} END)
-            FROM `tabMovimiento`
-            WHERE sucursal = %s
-            AND moneda = %s
-            AND docstatus = 1
-            AND fecha_de_registro < %s
-            """,
-            (self.sucursal, self.moneda, self.fecha_inicio),
-        )
+    def before_update_after_submit(self):
+        if self.turno_pos or frappe.db.get_value(self.doctype,self.name,"turno_pos"):
+            if not frappe.flags.ie_pos_internal:
+                frappe.throw(_("Los cierres POS se gestionan desde el turno integrado."))
 
-        if historical_balance and historical_balance[0][0]:
-            return flt(historical_balance[0][0])
-
-        return 0.0
+    def on_trash(self):
+        if self.turno_pos:
+            frappe.throw(_("Los cierres POS conservan su historial y no pueden eliminarse."))
 
     def on_submit(self):
+        if self.turno_pos:
+            from ingresos_egresos.pos import link_closure_movements
+            link_closure_movements(self)
+            return
         if not self.sucursal or not self.fecha_inicio or not self.fecha_final or not self.moneda:
             frappe.throw(_("Debe definir una sucursal, un rango de fechas y una moneda antes de enviar un cierre."))
 
@@ -208,6 +223,7 @@ class RegistrodeCierredeMovimiento(Document):
             filters={
                 "sucursal": self.sucursal,
                 "moneda": self.moneda,
+                "turno_pos": ["is", "not set"],
                 "fecha_de_registro": ["between", [self.fecha_inicio, self.fecha_final]],
                 "docstatus": ["<", 2],
                 "vinculado": 0,
@@ -227,6 +243,7 @@ class RegistrodeCierredeMovimiento(Document):
             UPDATE `tabMovimiento`
             SET vinculado = 1, cierre = %s, docstatus = 1
             WHERE sucursal = %s
+            AND COALESCE(turno_pos, '') = ''
             AND moneda = %s
             AND fecha_de_registro BETWEEN %s AND %s
             AND docstatus < 2
@@ -259,32 +276,59 @@ class RegistrodeCierredeMovimiento(Document):
 
 
 @frappe.whitelist()
-def get_events(start, end, filters=None):
-    from frappe.desk.reportview import get_filters_cond
+def get_closure_defaults(sucursal, moneda):
+    frappe.has_permission("Registro de Cierre de Movimiento", "read", throw=True)
+    if not frappe.has_permission("Branch", "read", sucursal):
+        frappe.throw(_("No tiene permisos para acceder a la sucursal seleccionada."))
+    from frappe.utils import add_days, nowdate
 
+    rows = frappe.get_list("Registro de Cierre de Movimiento",
+        filters={"sucursal": sucursal, "moneda": moneda, "docstatus": 1, "turno_pos": ["is", "not set"]},
+        fields=["fecha_final"], order_by="fecha_final desc", limit_page_length=1)
+    if rows:
+        return {"fecha_inicio": add_days(rows[0].fecha_final, 1), "hay_cierre": True}
+    rows = frappe.get_list("Movimiento",
+        filters={"sucursal": sucursal, "moneda": moneda, "vinculado": 0, "docstatus": ["<", 2], "turno_pos": ["is", "not set"]},
+        fields=["fecha_de_registro"], order_by="fecha_de_registro asc", limit_page_length=1)
+    return {"fecha_inicio": rows[0].fecha_de_registro if rows else nowdate(), "hay_cierre": False}
+
+
+@frappe.whitelist()
+def get_events(start, end, filters=None):
+    from frappe.desk.reportview import get_filters_cond, get_match_cond
+
+    frappe.has_permission("Registro de Cierre de Movimiento","read",throw=True)
     conditions = get_filters_cond("Registro de Cierre de Movimiento", filters, [])
+    conditions += get_match_cond("Registro de Cierre de Movimiento")
     conditions = conditions.replace("`tabRegistro de Cierre de Movimiento`.", "rcm.")
+    base = get_base_currency()
 
     data = frappe.db.sql(
         f"""
         SELECT
             rcm.name,
-            CONCAT(rcm.fecha_inicio, ' 00:00:00') AS fecha_inicio,
-            CONCAT(rcm.fecha_final, ' 23:59:59') AS fecha_final,
+            COALESCE(rcm.fecha_hora_inicio, CONCAT(rcm.fecha_inicio, ' 00:00:00')) AS fecha_inicio,
+            COALESCE(rcm.fecha_hora_final, CONCAT(rcm.fecha_final, ' 23:59:59')) AS fecha_final,
             rcm.sucursal,
+            rcm.moneda,
+            rcm.total_ingresos,
+            rcm.total_egresos,
             ROUND(IFNULL(rcm.total_ingresos_base, 0), 2) AS total_ingresos_base,
             ROUND(IFNULL(rcm.total_egresos_base, 0), 2) AS total_egresos_base,
             0 AS allDay,
             rcm.color AS color,
             CONCAT(
-                rcm.name, ' | Ingresos (Base): ', FORMAT(IFNULL(rcm.total_ingresos_base, 0), 2),
-                ' | Egresos (Base): ', FORMAT(IFNULL(rcm.total_egresos_base, 0), 2)
+                rcm.name, ' | ', rcm.moneda, ' | Ingresos: ', FORMAT(IFNULL(rcm.total_ingresos, 0), 2),
+                ' | Egresos: ', FORMAT(IFNULL(rcm.total_egresos, 0), 2),
+                ' | Base ', %s, ': ', FORMAT(IFNULL(rcm.total_ingresos_base, 0), 2),
+                ' / ', FORMAT(IFNULL(rcm.total_egresos_base, 0), 2)
             ) AS title
         FROM `tabRegistro de Cierre de Movimiento` rcm
         WHERE rcm.docstatus != 2
+        AND rcm.fecha_inicio <= %s AND rcm.fecha_final >= %s
         {conditions}
         """,
-        as_dict=True,
+        (base, end, start), as_dict=True,
     )
 
     return data

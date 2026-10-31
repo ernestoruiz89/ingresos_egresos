@@ -1,111 +1,31 @@
-# Copyright (c) 2024, Ernesto Ruiz and contributors
-# For license information, please see license.txt
-
 import frappe
 from frappe import _
 from frappe.utils import flt
+from ingresos_egresos.currency import aggregate, report_context
+
 
 def execute(filters=None):
-	columns = get_columns()
-	data = get_data(filters)
-	chart = get_chart(data, filters)
-	return columns, data, None, chart
-
-def get_columns():
-	return [
-		{
-			"label": _("Sucursal"),
-			"fieldname": "sucursal",
-			"fieldtype": "Link",
-			"options": "Branch",
-			"width": 120
-		},
-		{
-			"label": _("Clasificación"),
-			"fieldname": "clasificacion",
-			"fieldtype": "Data",
-			"width": 180
-		},
-		{
-			"label": _("Estado"),
-			"fieldname": "estado",
-			"fieldtype": "Data",
-			"width": 120
-		},
-		{
-			"label": _("Cantidad"),
-			"fieldname": "cantidad",
-			"fieldtype": "Int",
-			"width": 100
-		},
-		{
-			"label": _("Monto Total (Base)"),
-			"fieldname": "total",
-			"fieldtype": "Currency",
-			"width": 140
-		},
-		{
-			"label": _("% del Total"),
-			"fieldname": "percentage",
-			"fieldtype": "Percentage",
-			"width": 100
-		}
-	]
-
-def get_data(filters):
-	condiciones = ""
-	if filters.get("sucursal"):
-		condiciones += f" AND sucursal = '{filters.get('sucursal')}'"
-	
-	if filters.get("type"):
-		condiciones += f" AND tipo = '{filters.get('type')}'"
-
-	# Obtener datos agrupados por Sucursal, Clasificación y Estado de Vinculación (en moneda base)
-	data = frappe.db.sql(f"""
-		SELECT 
-			sucursal,
-			clasificacion, 
-            CASE WHEN vinculado = 1 THEN 'Cerrado' ELSE 'Pendiente' END as estado,
-			COUNT(*) as cantidad, 
-			SUM(importe_base) as total
-		FROM `tabMovimiento` 
-		WHERE docstatus < 2
-		AND fecha_de_registro BETWEEN %s AND %s
-		{condiciones}
-		GROUP BY sucursal, clasificacion, vinculado
-		ORDER BY sucursal, total DESC
-	""", (filters.get("from_date"), filters.get("to_date")), as_dict=1)
-
-	# Traducir estados
-	for row in data:
-		row["estado"] = _(row["estado"])
-
-	# Calcular %
-	total_general = sum([flt(d.total) for d in data])
-	for row in data:
-		row["total"] = flt(row.total, 2)
-		if total_general > 0:
-			row["percentage"] = flt((flt(row.total) / total_general) * 100, 1)
-		else:
-			row["percentage"] = 0
-
-	return data
-
-def get_chart(data, filters):
-	labels = [f"{d.get('clasificacion') or _('Sin Clasificación')} ({d.get('estado')})" for d in data]
-	values = [d.get("total") for d in data]
-
-	return {
-		"data": {
-			"labels": labels,
-			"datasets": [
-				{
-					"name": _("Monto por Concepto"),
-					"values": values
-				}
-			]
-		},
-		"type": "donut", # Donut chart es mejor para participacion
-		"height": 300,
-		"colors": ["#456789", "#EC8D71", "#333333", "#E09C2C", "#683226"] # Palette example
-	}
+    filters = filters or {}
+    currency, field, movement_filters = report_context(filters)
+    if filters.get("type"):
+        movement_filters["tipo"] = filters["type"]
+    columns = [
+        {"label": _("Sucursal"), "fieldname": "sucursal", "fieldtype": "Link", "options": "Branch", "width": 120},
+        {"label": _("Clasificación"), "fieldname": "clasificacion", "fieldtype": "Data", "width": 180},
+        {"label": _("Estado"), "fieldname": "estado", "fieldtype": "Data", "width": 110},
+        {"label": _("Cantidad"), "fieldname": "cantidad", "fieldtype": "Int", "width": 100},
+        {"label": _("Moneda"), "fieldname": "moneda", "fieldtype": "Link", "options": "Currency", "width": 80},
+        {"label": _("Monto Total"), "fieldname": "total", "fieldtype": "Currency", "options": "moneda", "width": 140},
+        {"label": _("% del Total"), "fieldname": "percentage", "fieldtype": "Percent", "width": 100},
+    ]
+    data = frappe.get_list("Movimiento", filters=movement_filters,
+        fields=["sucursal", "clasificacion", "vinculado", aggregate("count", "name", "cantidad"), aggregate("sum", field, "total")],
+        group_by="sucursal, clasificacion, vinculado", order_by="sucursal asc, total desc", limit_page_length=0)
+    grand_total = sum(flt(row.total) for row in data)
+    for row in data:
+        row.update(moneda=currency, estado=_("Cerrado") if row.vinculado else _("Pendiente"),
+            percentage=flt(flt(row.total) / grand_total * 100, 1) if grand_total else 0)
+    chart = {"type": "donut", "height": 300, "data": {
+        "labels": [f"{row.sucursal} / {row.clasificacion or _('Sin Clasificación')} ({row.estado})" for row in data],
+        "datasets": [{"name": _("Monto por Concepto") + " (" + currency + ")", "values": [row.total for row in data]}]}}
+    return columns, data, None, chart

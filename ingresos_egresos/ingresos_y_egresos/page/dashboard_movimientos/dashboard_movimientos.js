@@ -24,7 +24,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
         fieldtype: 'Link',
         options: 'Branch',
         change: function () {
-            refresh_dashboard(true);
+            refresh_dashboard();
         }
     });
 
@@ -48,6 +48,10 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
         }
     });
 
+    page.moneda_field = page.add_field({
+        fieldname: 'moneda', label: 'Moneda (vacío: todas)', fieldtype: 'Link', options: 'Currency',
+        default: route_opts.moneda || saved_filters.moneda, change: () => refresh_dashboard()
+    });
     // Intentar obtener las sucursales permitidas para el usuario
     frappe.call({
         method: "frappe.client.get_list",
@@ -85,15 +89,51 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
     // --- 2. Estructura del Cuerpo del Dashboard ---
     $(wrapper).find('.layout-main-section').append(`
         <style>
-            .dashboard-card-bg {
-                margin-bottom: 15px;
+            .dashboard-kpi-grid {
+                display: grid;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                grid-auto-rows: 1fr;
+                gap: 16px;
+                margin-bottom: 30px;
+            }
+            .dashboard-kpi-grid .dashboard-card-bg {
+                display: flex;
+                flex-direction: column;
+                min-width: 0;
+                padding: 20px;
+                border: 1px solid;
+                border-radius: 8px;
                 transition: transform 0.2s;
             }
-            .dashboard-card-bg:hover {
+            .dashboard-kpi-grid .dashboard-card-bg:hover {
                 transform: translateY(-2px);
+            }
+            .dashboard-kpi-grid h5 {
+                margin: 0;
+            }
+            .dashboard-kpi-grid .dashboard-kpi-value {
+                margin: 10px 0 12px;
+                font-size: clamp(1.15rem, 1.8vw, 1.6rem);
+                font-weight: bold;
+                line-height: 1.25;
+                font-variant-numeric: tabular-nums;
+                overflow-wrap: anywhere;
+            }
+            .dashboard-kpi-detail {
+                margin-top: auto;
+                min-height: 2.8em;
+                font-size: 11px;
+                line-height: 1.4;
+                overflow-wrap: anywhere;
+                opacity: 0.8;
             }
             .quick-actions-container .btn {
                 margin-bottom: 5px;
+            }
+            @media (max-width: 1199px) {
+                .dashboard-kpi-grid {
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
             }
             @media (max-width: 767px) {
                 .dashboard-container {
@@ -106,11 +146,11 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                     width: 100%;
                     text-align: left;
                 }
-                .dashboard-card-bg h2 {
-                    font-size: 1.6rem !important;
+                .dashboard-kpi-grid {
+                    grid-template-columns: minmax(0, 1fr);
                 }
-                .dashboard-card-bg h5 {
-                    font-size: 0.9rem !important;
+                .dashboard-kpi-grid .dashboard-kpi-value {
+                    font-size: 1.6rem;
                 }
                 /* Ocultar columnas menos importantes en móvil */
                 .hidden-xs {
@@ -137,39 +177,37 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
 				</div>
 			</div>
 
-			<!-- Sección de Tarjetas KPI -->
-			<div class="row" style="margin-bottom: 30px;">
-				<div class="col-sm-6 col-md-3">
-					<div class="dashboard-card-bg" style="background: #e2e3e5; padding: 20px; border-radius: 8px; border: 1px solid #d6d8db;">
-						<h5 style="color: #383d41;">Saldo Anterior</h5>
-						<h2 id="kpi-saldo-anterior" style="font-weight: bold; margin-top: 10px;">$ 0.00</h2>
-						<div style="font-size: 11px; visibility: hidden;">&nbsp;</div>
-					</div>
-				</div>
-                <div class="col-sm-6 col-md-3">
-					<div class="dashboard-card-bg" style="background: #d4edda; padding: 20px; border-radius: 8px; border: 1px solid #c3e6cb;">
-						<h5 style="color: #155724;">Total Ingresos</h5>
-						<h2 id="kpi-ingresos" style="font-weight: bold; margin-top: 10px;">$ 0.00</h2>
-						<div id="kpi-ingresos-detail" style="font-size: 11px; color: #155724; opacity: 0.8;"></div>
-					</div>
-				</div>
-				<div class="col-sm-6 col-md-3">
-					<div class="dashboard-card-bg" style="background: #f8d7da; padding: 20px; border-radius: 8px; border: 1px solid #f5c6cb;">
-						<h5 style="color: #721c24;">Total Egresos</h5>
-						<h2 id="kpi-egresos" style="font-weight: bold; margin-top: 10px;">$ 0.00</h2>
-						<div id="kpi-egresos-detail" style="font-size: 11px; color: #721c24; opacity: 0.8;"></div>
-					</div>
-				</div>
-				<div class="col-sm-6 col-md-3">
-					<div class="dashboard-card-bg" style="background: #cce5ff; padding: 20px; border-radius: 8px; border: 1px solid #b8daff;">
-						<h5 style="color: #004085;">Saldo Actual</h5>
-						<h2 id="kpi-saldo" style="font-weight: bold; margin-top: 10px;">$ 0.00</h2>
-						<div style="font-size: 11px; visibility: hidden;">&nbsp;</div>
-					</div>
-				</div>
-			</div>
+			<h4 id="consolidado-label">Consolidado en moneda base</h4>
+            <!-- Sección de Tarjetas KPI -->
+            <div class="dashboard-kpi-grid">
+                <div class="dashboard-card-bg" style="background: #e2e3e5; border-color: #d6d8db; color: #383d41;">
+                    <h5>Saldo Anterior</h5>
+                    <h2 id="kpi-saldo-anterior" class="dashboard-kpi-value">0.00</h2>
+                    <div class="dashboard-kpi-detail" aria-hidden="true"></div>
+                </div>
+                <div class="dashboard-card-bg" style="background: #d4edda; border-color: #c3e6cb; color: #155724;">
+                    <h5>Total Ingresos</h5>
+                    <h2 id="kpi-ingresos" class="dashboard-kpi-value">0.00</h2>
+                    <div id="kpi-ingresos-detail" class="dashboard-kpi-detail"></div>
+                </div>
+                <div class="dashboard-card-bg" style="background: #f8d7da; border-color: #f5c6cb; color: #721c24;">
+                    <h5>Total Egresos</h5>
+                    <h2 id="kpi-egresos" class="dashboard-kpi-value">0.00</h2>
+                    <div id="kpi-egresos-detail" class="dashboard-kpi-detail"></div>
+                </div>
+                <div class="dashboard-card-bg" style="background: #cce5ff; border-color: #b8daff; color: #004085;">
+                    <h5>Saldo Actual</h5>
+                    <h2 id="kpi-saldo" class="dashboard-kpi-value">0.00</h2>
+                    <div class="dashboard-kpi-detail" aria-hidden="true"></div>
+                </div>
+            </div>
 
-			<!-- Tabla de Últimos Movimientos -->
+            <h4>Saldos por moneda</h4>
+            <div class="table-responsive"><table class="table table-bordered" id="table-monedas">
+                <thead><tr><th>Moneda</th><th>Saldo Anterior</th><th>Ingresos</th><th>Egresos</th><th>Saldo Actual</th></tr></thead>
+                <tbody></tbody>
+            </table></div>
+            <!-- Tabla de Últimos Movimientos -->
 			<div class="row">
 				<div class="col-md-12">
 					<h4>Últimos Movimientos</h4>
@@ -182,13 +220,13 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
 									<th>Clasificación</th>
                                     <th class="hidden-xs">Referencia</th>
                                     <th class="hidden-xs">Descripción</th>
-									<th>Monto</th>
+									<th>Moneda</th><th>Monto</th>
 									<th>Estado</th>
                                     <th>Acciones</th>
 								</tr>
 							</thead>
 							<tbody>
-								<tr><td colspan="7" class="text-center">Seleccione una sucursal para ver datos</td></tr>
+								<tr><td colspan="9" class="text-center">Seleccione una sucursal para ver datos</td></tr>
 							</tbody>
 						</table>
 					</div>
@@ -215,26 +253,31 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
         return page.sucursal_field.get_value();
     }
 
-    function refresh_dashboard(is_sucursal_change = false) {
+    function refresh_dashboard() {
+        const request_id = page.dashboard_request = (page.dashboard_request || 0) + 1;
         let sucursal = page.sucursal_field.get_value();
         let from_date = page.desde_field.get_value();
         let to_date = page.hasta_field.get_value();
+        let moneda = page.moneda_field.get_value();
 
         // Guardar persistencia de filtros
         if (sucursal) {
             localStorage.setItem('dashboard_movimientos_filters', JSON.stringify({
                 sucursal: sucursal,
                 from_date: from_date,
-                to_date: to_date
+                to_date: to_date,
+                moneda: moneda
             }));
         }
 
         if (!sucursal) {
+            $('#table-monedas tbody').empty();
+            $('#kpi-ingresos-detail, #kpi-egresos-detail').empty();
             $('#kpi-ingresos').html(format_currency(0));
             $('#kpi-egresos').html(format_currency(0));
             $('#kpi-saldo-anterior').html(format_currency(0));
             $('#kpi-saldo').html(format_currency(0));
-            $('#table-movimientos tbody').html('<tr><td colspan="7" class="text-center">Seleccione una sucursal para ver datos</td></tr>');
+            $('#table-movimientos tbody').html('<tr><td colspan="9" class="text-center">Seleccione una sucursal para ver datos</td></tr>');
             return;
         }
 
@@ -243,27 +286,32 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
             args: {
                 sucursal: sucursal,
                 from_date: from_date,
-                to_date: to_date
+                to_date: to_date,
+                moneda: moneda
             },
             callback: function (r) {
+                if (request_id !== page.dashboard_request) return;
                 if (r.message) {
-                    // Si cambió la sucursal, actualizamos el filtro 'Desde' sugerido
-                    if (is_sucursal_change && r.message.periodo && r.message.periodo.ultimo_cierre) {
-                        let next_day = frappe.datetime.add_days(r.message.periodo.ultimo_cierre, 1);
-                        // Usamos set_input para evitar disparar el evento 'change' inmediatamente si es posible
-                        // o manejamos la recursión indirectamente. 
-                        // En Frappe, set_value/set_input suele disparar el evento.
-                        page.desde_field.set_input(next_day);
-                        // Actualizamos de nuevo con la nueva fecha para obtener datos filtrados
-                        refresh_dashboard();
-                        return;
-                    }
-
+                    page.base_currency = r.message.moneda_base;
+                    $('#consolidado-label').text('Consolidado en ' + page.base_currency);
+                    update_currency_totals(r.message.por_moneda);
                     update_kpis(r.message.totales);
                     update_table(r.message.movimientos);
                 }
             }
         });
+    }
+
+    function update_currency_totals(rows) {
+        const tbody = $('#table-monedas tbody').empty();
+        (rows || []).forEach(row => {
+            const tr = $('<tr>').appendTo(tbody);
+            $('<td>').text(row.moneda).appendTo(tr);
+            ['saldo_anterior', 'ingresos', 'egresos', 'saldo'].forEach(key => {
+                $('<td class="text-right">').html(format_currency(row[key], row.moneda)).appendTo(tr);
+            });
+        });
+        if (!rows || !rows.length) tbody.append('<tr><td colspan="5">No hay movimientos</td></tr>');
     }
 
     function update_kpis(totales) {
@@ -304,7 +352,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
         tbody.empty();
 
         if (!movimientos || movimientos.length === 0) {
-            tbody.append('<tr><td colspan="7" class="text-center">No hay movimientos recientes</td></tr>');
+            tbody.append('<tr><td colspan="9" class="text-center">No hay movimientos recientes</td></tr>');
             return;
         }
 
@@ -325,7 +373,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
 				<td>${mov.clasificacion || ''}</td>
                 <td class="hidden-xs">${mov.referencia || ''}</td>
                 <td class="hidden-xs">${mov.descripcion || ''}</td>
-				<td class="text-right font-weight-bold">${format_currency(mov.importe)}</td>
+				<td>${frappe.utils.escape_html(mov.moneda || "")}</td><td class="text-right font-weight-bold">${format_currency(mov.importe, mov.moneda)}</td>
 				<td>${estado}</td>
                 <td class="text-center">${btn_action}</td>
 			</tr>`;
@@ -342,6 +390,24 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
             let name = $(this).data('name');
             show_edit_dialog(name, false);
         });
+    }
+
+    function movement_dialog_layout(fields) {
+        const controls = Object.fromEntries(fields.filter(field => field.fieldname).map(field => [field.fieldname, field]));
+        controls.moneda_base.hidden = 1;
+        if (page.base_currency) controls.importe_base.label = `Importe base (${page.base_currency})`;
+        controls.descripcion.max_height = '90px';
+        return [
+            {fieldtype: 'Section Break', label: 'Datos del movimiento'},
+            controls.sucursal, controls.fecha_de_registro,
+            {fieldtype: 'Column Break'}, controls.clasificacion, controls.referencia,
+            {fieldtype: 'Section Break', label: 'Importe y moneda'},
+            controls.importe, controls.tasa_de_cambio,
+            {fieldtype: 'Column Break'}, controls.moneda, controls.importe_base, controls.moneda_base,
+            {fieldtype: 'Section Break', label: 'Descripción y soportes'}, controls.descripcion,
+            {fieldtype: 'Column Break'},
+            ...fields.filter(field => ['file_upload_area', 'existing_attachments', 'new_file_upload_area'].includes(field.fieldname))
+        ];
     }
 
     function show_quick_entry_dialog(tipo) {
@@ -364,7 +430,8 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
 
                 let d = new frappe.ui.Dialog({
                     title: `Registrar ${tipo}`,
-                    fields: [
+                    size: 'large',
+                    fields: movement_dialog_layout([
                         {
                             label: 'Sucursal',
                             fieldname: 'sucursal',
@@ -396,8 +463,10 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                             label: 'Importe',
                             fieldname: 'importe',
                             fieldtype: 'Currency',
+                            options: 'moneda',
                             reqd: 1
                         },
+                        ...frappe.ie_currency.fields(),
                         {
                             label: 'Descripción',
                             fieldname: 'descripcion',
@@ -412,7 +481,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                             fieldtype: 'HTML',
                             label: 'Soportes (Drag & Drop)'
                         }
-                    ],
+                    ]),
                     primary_action_label: 'Registrar',
                     primary_action: function (values) {
                         values.tipo = tipo;
@@ -420,6 +489,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                     }
                 });
 
+                frappe.ie_currency.bind_dialog(d);
                 // ... (Drag & Drop rendering code) ...
                 let $wrapper = d.fields_dict.file_upload_area.$wrapper;
                 $wrapper.html(`
@@ -464,6 +534,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
         page.opening_dialog = true;
 
         frappe.db.get_doc('Movimiento', name).then(doc => {
+            read_only = read_only || Boolean(doc.turno_pos);
             // Obtener opciones de clasificación
             frappe.call({
                 method: 'ingresos_egresos.ingresos_y_egresos.doctype.movimiento.movimiento.get_code_name_options',
@@ -522,11 +593,14 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                                 {
                                     label: 'Importe',
                                     fieldname: 'importe',
-                                    fieldtype: 'Currency',
+                                    fieldtype: read_only ? 'Float' : 'Currency',
+                                    precision: frappe.boot.sysdefaults.currency_precision || 2,
+                                    options: 'moneda',
                                     default: doc.importe,
                                     reqd: 1,
                                     read_only: read_only
                                 },
+                                ...frappe.ie_currency.fields(doc, read_only),
                                 {
                                     label: 'Descripción',
                                     fieldname: 'descripcion',
@@ -555,7 +629,8 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
 
                             let d = new frappe.ui.Dialog({
                                 title: read_only ? `Ver ${doc.tipo}` : `Editar ${doc.tipo}`,
-                                fields: fields,
+                                size: 'large',
+                                fields: movement_dialog_layout(fields),
                                 primary_action_label: read_only ? null : 'Guardar Cambios',
                                 secondary_action_label: read_only ? null : 'Eliminar Registro',
                                 secondary_action: function () {
@@ -588,6 +663,8 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                                                     referencia: values.referencia,
                                                     clasificacion: values.clasificacion,
                                                     importe: values.importe,
+                                                    moneda: values.moneda,
+                                                    tasa_de_cambio: values.tasa_de_cambio,
                                                     descripcion: values.descripcion
                                                 }
                                             },
@@ -694,6 +771,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                                 d.pending_files = pending_files;
                             }
 
+                            frappe.ie_currency.bind_dialog(d, doc, read_only);
                             d.show();
                         }
                     });
@@ -714,6 +792,8 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
                     clasificacion: values.clasificacion,
                     referencia: values.referencia,
                     importe: values.importe,
+                    moneda: values.moneda,
+                    tasa_de_cambio: values.tasa_de_cambio,
                     descripcion: values.descripcion,
                     docstatus: 0 // Crear como Borrador (0)
                 }
@@ -790,111 +870,40 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
             return;
         }
 
-        page.opening_dialog = true;
-        frappe.call({
-            method: 'frappe.client.get_value',
-            args: {
-                doctype: 'Registro de Cierre de Movimiento',
-                filters: { sucursal: sucursal, docstatus: 1 },
-                fieldname: 'fecha_final',
-                order_by: 'fecha_final desc'
-            },
-            callback: function (r_cierre) {
-                let suggested_start_date = frappe.datetime.get_today();
-
-                if (r_cierre.message && r_cierre.message.fecha_final) {
-                    // Caso 1: Hay un cierre previo -> Fecha Inicio = Cierre Previo + 1 día
-                    suggested_start_date = frappe.datetime.add_days(r_cierre.message.fecha_final, 1);
-                    page.opening_dialog = false;
-                    show_cierre_dialog(sucursal, suggested_start_date, true);
-                } else {
-                    // Caso 2: No hay cierre previo -> Buscar el movimiento abierto más antiguo
-                    frappe.call({
-                        method: 'frappe.client.get_value',
-                        args: {
-                            doctype: 'Movimiento',
-                            filters: { sucursal: sucursal, vinculado: 0, docstatus: ['<', 2] },
-                            fieldname: 'fecha_de_registro',
-                            order_by: 'fecha_de_registro asc'
-                        },
-                        callback: function (r_mov) {
-                            page.opening_dialog = false;
-                            if (r_mov.message && r_mov.message.fecha_de_registro) {
-                                suggested_start_date = r_mov.message.fecha_de_registro;
-                            }
-                            show_cierre_dialog(sucursal, suggested_start_date, false);
-                        }
-                    });
-                }
-            }
-        });
+        show_cierre_dialog(sucursal);
     }
 
-    function show_cierre_dialog(sucursal, start_date, has_previous_closure) {
-        let d = new frappe.ui.Dialog({
+    function show_cierre_dialog(sucursal) {
+        const d = new frappe.ui.Dialog({
             title: 'Realizar Cierre de Movimientos',
             fields: [
-                {
-                    label: 'Sucursal',
-                    fieldname: 'sucursal',
-                    fieldtype: 'Link',
-                    options: 'Branch',
-                    default: sucursal,
-                    read_only: 1
-                },
-                {
-                    label: 'Fecha Inicio',
-                    fieldname: 'fecha_inicio',
-                    fieldtype: 'Date',
-                    default: start_date,
-                    reqd: 1,
-                    read_only: has_previous_closure ? 1 : 0
-                },
-                {
-                    label: 'Fecha Final',
-                    fieldname: 'fecha_final',
-                    fieldtype: 'Date',
-                    default: frappe.datetime.get_today(),
-                    reqd: 1
-                },
-                {
-                    label: 'Moneda',
-                    fieldname: 'moneda',
-                    fieldtype: 'Link',
-                    options: 'Currency',
-                    reqd: 1,
-                    onchange: function() {
-                        // Opcional: auto setear la moneda base si no hay nada
-                    }
-                },
-                {
-                    fieldtype: 'HTML',
-                    options: `<p class="text-muted small">${has_previous_closure ?
-                        'La fecha de inicio está bloqueada para dar continuidad al último cierre.' :
-                        'Esto vinculará todos los movimientos pendientes en el rango de fechas seleccionado.'}</p>`
-                }
+                {label: 'Sucursal', fieldname: 'sucursal', fieldtype: 'Link', options: 'Branch', default: sucursal, read_only: 1},
+                {label: 'Moneda', fieldname: 'moneda', fieldtype: 'Link', options: 'Currency', reqd: 1,
+                    onchange: async () => {
+                        const moneda = d.get_value('moneda');
+                        const seq = d._closure_seq = (d._closure_seq || 0) + 1;
+                        if (!moneda) return;
+                        const r = await frappe.call({
+                            method: 'ingresos_egresos.ingresos_y_egresos.doctype.registro_de_cierre_de_movimiento.registro_de_cierre_de_movimiento.get_closure_defaults',
+                            args: {sucursal, moneda}
+                        });
+                        if (seq !== d._closure_seq) return;
+                        d.set_value('fecha_inicio', r.message.fecha_inicio);
+                        d.set_df_property('fecha_inicio', 'read_only', r.message.hay_cierre ? 1 : 0);
+                    }},
+                {label: 'Fecha Inicio', fieldname: 'fecha_inicio', fieldtype: 'Date', reqd: 1},
+                {label: 'Fecha Final', fieldname: 'fecha_final', fieldtype: 'Date', default: frappe.datetime.get_today(), reqd: 1}
             ],
             primary_action_label: 'Generar Cierre',
-            primary_action: function (values) {
+            primary_action(values) {
                 if (values.fecha_inicio > values.fecha_final) {
-                    frappe.msgprint("La Fecha Inicio no puede ser mayor que la Fecha Final");
+                    frappe.msgprint('La Fecha Inicio no puede ser mayor que la Fecha Final');
                     return;
                 }
-
-                frappe.confirm(`¿Está seguro de generar el cierre del <b>${values.fecha_inicio}</b> al <b>${values.fecha_final}</b> para la moneda <b>${values.moneda}</b>?`, () => {
-                    create_cierre(d, values);
-                });
+                frappe.confirm(`¿Generar el cierre del ${values.fecha_inicio} al ${values.fecha_final} en ${frappe.utils.escape_html(values.moneda)}?`, () => create_cierre(d, values));
             }
         });
-
-        // Set default moneda to base currency
-        frappe.db.get_value('IE Configuracion', 'IE Configuracion', 'moneda_base')
-        .then(r => {
-            if (r && r.message && r.message.moneda_base) {
-                d.set_value('moneda', r.message.moneda_base);
-            }
-        });
-
+        frappe.ie_currency.settings().then(settings => d.set_value('moneda', page.moneda_field.get_value() || settings.moneda_base));
         d.show();
     }
 
@@ -925,8 +934,8 @@ frappe.pages['dashboard-movimientos'].on_page_load = function (wrapper) {
     }
 
     function format_currency(value, currency, decimals) {
-        // Implementacion simple si frappe.format no esta disponible, pero frappe.format lo esta
-        return frappe.format(value, { fieldtype: 'Currency', currency: currency || frappe.defaults.get_default("currency") });
+        return frappe.format(value, {fieldtype: 'Currency', options: 'moneda'},
+            {only_value: true}, {moneda: currency || page.base_currency});
     }
 
     // Init

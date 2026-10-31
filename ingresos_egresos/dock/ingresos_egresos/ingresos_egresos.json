@@ -1,0 +1,18 @@
+{
+ "doctype": "Dock",
+ "name": "ingresos_egresos",
+ "app": "ingresos_egresos",
+ "standard": 1,
+ "user": "",
+ "modified": "2026-10-31 13:00:00.000000",
+ "items": [
+  {
+   "link_type": "Sidebar",
+   "link_to": "Ingresos y Egresos",
+   "title": "Ingresos y Egresos",
+   "icon": "calculator-soft",
+   "hidden": 0,
+   "added": 0
+  }
+ ]
+}

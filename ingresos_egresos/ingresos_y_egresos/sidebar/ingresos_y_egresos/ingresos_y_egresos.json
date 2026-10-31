@@ -1,0 +1,100 @@
+{
+ "doctype": "Sidebar",
+ "name": "Ingresos y Egresos",
+ "title": "Ingresos y Egresos",
+ "module": "Ingresos y Egresos",
+ "app": "ingresos_egresos",
+ "standard": 1,
+ "header_icon": "arrows-down-up",
+ "modified": "2026-10-31 20:45:00.000000",
+ "items": [
+  {
+   "type": "Link",
+   "label": "Inicio",
+   "link_type": "Workspace",
+   "link_to": "Ingresos y Egresos",
+   "child": 0,
+   "icon": "house"
+  },
+  {
+   "type": "Link",
+   "label": "Tablero de movimientos",
+   "link_type": "Page",
+   "link_to": "dashboard-movimientos",
+   "child": 0,
+   "icon": "chart-column"
+  },
+  {
+   "type": "Link",
+   "label": "Movimientos",
+   "link_type": "DocType",
+   "link_to": "Movimiento",
+   "child": 0,
+   "icon": "arrow-right-left"
+  },
+  {
+   "type": "Link",
+   "label": "Cierres de caja",
+   "link_type": "DocType",
+   "link_to": "Registro de Cierre de Movimiento",
+   "child": 0,
+   "icon": "lock"
+  },
+  {
+   "type": "Link",
+   "label": "Turnos POS",
+   "link_type": "DocType",
+   "link_to": "IE Turno POS",
+   "icon": "store"
+  },
+  {
+   "type": "Section Break",
+   "label": "Reportes",
+   "collapsible": 1,
+   "keep_closed": 0,
+   "indent": 1
+  },
+  {
+   "type": "Link",
+   "label": "Movimientos",
+   "link_type": "Report",
+   "link_to": "Reporte de Movimientos",
+   "child": 1
+  },
+  {
+   "type": "Link",
+   "label": "Movimientos por concepto",
+   "link_type": "Report",
+   "link_to": "Reporte de Movimientos por Concepto",
+   "child": 1
+  },
+  {
+   "type": "Link",
+   "label": "Flujo de caja",
+   "link_type": "Report",
+   "link_to": "Reporte de Flujo de Caja",
+   "child": 1
+  },
+  {
+   "type": "Section Break",
+   "label": "Configuración",
+   "collapsible": 1,
+   "keep_closed": 0,
+   "indent": 1
+  },
+  {
+   "type": "Link",
+   "label": "Configuración y POS",
+   "link_type": "DocType",
+   "link_to": "IE Configuracion",
+   "child": 1
+  },
+  {
+   "type": "Link",
+   "label": "Conceptos de ingresos y egresos",
+   "link_type": "DocType",
+   "link_to": "IE Codigo",
+   "child": 1
+  }
+ ]
+}

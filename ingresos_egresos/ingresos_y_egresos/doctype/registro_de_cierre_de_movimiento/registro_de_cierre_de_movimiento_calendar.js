@@ -23,6 +23,6 @@ frappe.views.calendar["Registro de Cierre de Movimiento"] = {
 	// para incluir total_ingreso / total_egreso, puedes usar get_title.
 	get_title: function(data) {
 	// Combinas el 'name' con los totales
-	return `${data.sucursal} | Ingresos: ${data.total_ingresos} / Egresos: ${data.total_egresos}`;
+	return data.title;
 	}
 };

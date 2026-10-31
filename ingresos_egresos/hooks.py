@@ -10,30 +10,28 @@ app_license = "mit"
 
 required_apps = ["erpnext"]
 
-fixtures = [
+# Default concepts are seeded without overwriting site customizations.
+fixtures = []
+
+
+app_home = "/desk/ingresos-y-egresos/dashboard-movimientos"
+
+add_to_apps_screen = [
     {
-        "dt": "IE Codigo",
-        "filters": [["name", "in", ["Ingreso", "Egreso"]]]
+        "name": app_name,
+        "logo": "/assets/ingresos_egresos/images/ingresos-egresos.svg",
+        "title": app_title,
+        "route": app_home,
+        "has_permission": "ingresos_egresos.navigation.has_app_permission",
     }
 ]
-
-# Each item in the list will be shown as an app in the apps page
-# add_to_apps_screen = [
-# 	{
-# 		"name": "ingresos_egresos",
-# 		"logo": "/assets/ingresos_egresos/logo.png",
-# 		"title": "Ingresos y Egresos",
-# 		"route": "/ingresos_egresos",
-# 		"has_permission": "ingresos_egresos.api.permission.has_app_permission"
-# 	}
-# ]
 
 # Includes in <head>
 # ------------------
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/ingresos_egresos/css/ingresos_egresos.css"
-# app_include_js = "/assets/ingresos_egresos/js/ingresos_egresos.js"
+app_include_js = "/assets/ingresos_egresos/js/ie_currency.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/ingresos_egresos/css/ingresos_egresos.css"
@@ -241,3 +239,38 @@ fixtures = [
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
 
+
+
+before_install = "ingresos_egresos.pos_setup.ensure_roles"
+before_migrate = "ingresos_egresos.pos_setup.ensure_roles"
+after_install = "ingresos_egresos.pos_setup.setup"
+after_migrate = "ingresos_egresos.pos_setup.setup"
+page_js = {"point-of-sale": "public/js/pos_integration.js"}
+
+doc_events = {
+    "POS Opening Entry": {
+        "before_submit": "ingresos_egresos.pos_hooks.before_opening_submit",
+        "on_submit": "ingresos_egresos.pos_hooks.on_opening_submit",
+        "before_cancel": "ingresos_egresos.pos_hooks.before_opening_cancel",
+        "on_cancel": "ingresos_egresos.pos_hooks.on_opening_cancel",
+        "on_update_after_submit": "ingresos_egresos.pos_hooks.opening_updated",
+        "before_update_after_submit": "ingresos_egresos.pos_hooks.opening_before_update",
+    },
+    "POS Closing Entry": {
+        "before_submit": "ingresos_egresos.pos_hooks.closing_guard",
+        "before_cancel": "ingresos_egresos.pos_hooks.closing_guard",
+        "before_update_after_submit": "ingresos_egresos.pos_hooks.closing_before_update",
+    },
+    "POS Profile": {"validate": "ingresos_egresos.pos_hooks.profile_before_save"},
+    "POS Settings": {"validate": "ingresos_egresos.pos_hooks.settings_before_save"},
+    **{dt: {
+        "before_submit": "ingresos_egresos.pos_hooks.invoice_before_submit",
+        "on_submit": "ingresos_egresos.pos_hooks.invoice_on_submit",
+        "before_cancel": "ingresos_egresos.pos_hooks.invoice_before_cancel",
+        "on_cancel": "ingresos_egresos.pos_hooks.invoice_on_cancel",
+        "before_update_after_submit": "ingresos_egresos.pos_hooks.invoice_before_update",
+    } for dt in ("POS Invoice", "Sales Invoice")},
+}
+scheduler_events = {"cron": {"* * * * *": ["ingresos_egresos.pos.reconcile_pending"]}}
+has_permission = {"IE Turno POS": "ingresos_egresos.ingresos_y_egresos.doctype.ie_turno_pos.ie_turno_pos.has_permission"}
+permission_query_conditions = {"IE Turno POS": "ingresos_egresos.ingresos_y_egresos.doctype.ie_turno_pos.ie_turno_pos.get_permission_query_conditions"}

@@ -2,31 +2,33 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, getdate
+from ingresos_egresos.currency import calculate_amounts, get_base_currency
 
 
 class Movimiento(Document):
     def validate(self):
+        old_turn = frappe.db.get_value("Movimiento", self.name, "turno_pos") if not self.is_new() else None
+        if (old_turn or self.turno_pos or self.origen_pos or self.clave_origen_pos) and not frappe.flags.ie_pos_internal:
+            frappe.throw(_("Los movimientos POS se gestionan desde la integración y no se pueden desvincular."))
         self.ensure_currency_defaults()
         self.calculate_base_amount()
         self.validate_required_fields()
-        self.validate_against_closure_dates()
+        if self.turno_pos:
+            from ingresos_egresos.pos import validate_pos_movement
+            validate_pos_movement(self)
+        else:
+            self.validate_against_closure_dates()
         self.prevent_manual_submission()
 
     def ensure_currency_defaults(self):
-        if self.moneda:
-            return
-
-        base_currency = frappe.db.get_single_value("IE Configuracion", "moneda_base")
-        if not base_currency:
-            frappe.throw(_("Debe configurar la moneda base en IE Configuración antes de guardar movimientos."))
-
-        self.moneda = base_currency
+        self.moneda = self.moneda or get_base_currency()
 
     def calculate_base_amount(self):
-        if not self.tasa_de_cambio or self.tasa_de_cambio <= 0:
-            self.tasa_de_cambio = 1.0
-
-        self.importe_base = flt(self.importe) * flt(self.tasa_de_cambio)
+        self.moneda, self.tasa_de_cambio, amount = calculate_amounts(
+            self.moneda, self.tasa_de_cambio, self.importe, self.fecha_de_registro
+        )
+        self.moneda_base = get_base_currency()
+        self.importe_base = flt(amount, self.precision("importe_base"))
 
     def validate_required_fields(self):
         if self.sucursal and self.fecha_de_registro:
@@ -36,45 +38,27 @@ class Movimiento(Document):
 
     def validate_against_closure_dates(self):
         posting_date = getdate(self.fecha_de_registro)
-        first_closure_date = frappe.db.get_value(
+        last_closure_date = frappe.db.get_value(
             "Registro de Cierre de Movimiento",
-            filters={"sucursal": self.sucursal, "docstatus": 1},
-            fieldname="fecha_inicio",
-            order_by="fecha_inicio asc",
+            filters={"sucursal": self.sucursal, "moneda": self.moneda, "docstatus": 1, "turno_pos": ["is", "not set"]},
+            fieldname="fecha_final", order_by="fecha_final desc",
         )
+        if last_closure_date and posting_date <= getdate(last_closure_date):
+            frappe.throw(_(
+                "No se puede registrar o modificar el movimiento: la sucursal y moneda ya tienen un cierre hasta {0}."
+            ).format(last_closure_date))
 
-        if first_closure_date:
-            first_closure_date = getdate(first_closure_date)
-            if posting_date < first_closure_date:
-                frappe.throw(
-                    _(
-                        "No se puede agregar el movimiento porque la fecha {0} es anterior al primer cierre registrado ({1})."
-                    ).format(posting_date, first_closure_date)
-                )
+    def on_trash(self):
+        if self.turno_pos:
+            frappe.throw(_("Los movimientos POS se anulan desde la operación de origen."))
+        if self.docstatus < 2:
+            self.validate_against_closure_dates()
 
-        existing_closure = frappe.db.get_value(
-            "Registro de Cierre de Movimiento",
-            filters={
-                "sucursal": self.sucursal,
-                "docstatus": 1,
-                "fecha_inicio": ["<=", posting_date],
-                "fecha_final": [">=", posting_date],
-            },
-            fieldname=["name", "fecha_inicio", "fecha_final"],
-            as_dict=True,
-        )
-
-        if existing_closure:
-            frappe.throw(
-                _(
-                    "No se puede agregar el movimiento porque la fecha {0} ya está incluida en el cierre {1} ({2} - {3})."
-                ).format(
-                    posting_date,
-                    existing_closure.name,
-                    existing_closure.fecha_inicio,
-                    existing_closure.fecha_final,
-                )
-            )
+    def before_cancel(self):
+        if self.turno_pos:
+            frappe.throw(_("Los movimientos POS se anulan desde la operación de origen."))
+        if self.cierre:
+            frappe.throw(_("Debe cancelar el cierre para reabrir este movimiento."))
 
     def prevent_manual_submission(self):
         if self.docstatus != 1 or self.vinculado:

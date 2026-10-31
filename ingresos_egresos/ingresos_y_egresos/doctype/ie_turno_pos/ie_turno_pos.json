@@ -1,0 +1,184 @@
+{
+ "doctype": "DocType",
+ "name": "IE Turno POS",
+ "module": "Ingresos y Egresos",
+ "engine": "InnoDB",
+ "field_order": [
+  "pos_opening_entry",
+  "pos_profile",
+  "sucursal",
+  "company",
+  "cajero",
+  "fecha_inicio",
+  "fecha_final",
+  "estado",
+  "operacion",
+  "solicitado_por",
+  "pos_closing_entry",
+  "moneda_base",
+  "moneda_empresa",
+  "tasa_empresa_base",
+  "fondos_apertura",
+  "ultimo_error",
+  "medios_pago",
+  "tipo_factura"
+ ],
+ "fields": [
+  {
+   "fieldname": "tipo_factura",
+   "fieldtype": "Select",
+   "label": "Modo de facturación",
+   "options": "POS Invoice\nSales Invoice",
+   "read_only": 1
+  },
+  {
+   "fieldname": "pos_opening_entry",
+   "fieldtype": "Link",
+   "label": "Apertura POS",
+   "options": "POS Opening Entry",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "pos_profile",
+   "fieldtype": "Link",
+   "label": "Perfil POS",
+   "options": "POS Profile",
+   "reqd": 1,
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "sucursal",
+   "fieldtype": "Link",
+   "label": "Sucursal",
+   "options": "Branch",
+   "reqd": 1,
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Empresa",
+   "options": "Company",
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "cajero",
+   "fieldtype": "Link",
+   "label": "Cajero",
+   "options": "User",
+   "reqd": 1,
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "fecha_inicio",
+   "fieldtype": "Datetime",
+   "label": "Apertura",
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "fecha_final",
+   "fieldtype": "Datetime",
+   "label": "Corte",
+   "read_only": 1
+  },
+  {
+   "fieldname": "estado",
+   "fieldtype": "Select",
+   "label": "Estado",
+   "options": "Abierto\nCerrando POS\nCerrando app\nCerrado\nAnulando\nError\nCancelado",
+   "default": "Abierto",
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "operacion",
+   "fieldtype": "Select",
+   "label": "Operación pendiente",
+   "options": "\nCierre\nAnulacion",
+   "read_only": 1
+  },
+  {
+   "fieldname": "solicitado_por",
+   "fieldtype": "Link",
+   "label": "Solicitado por",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "pos_closing_entry",
+   "fieldtype": "Link",
+   "label": "Cierre ERPNext",
+   "options": "POS Closing Entry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "moneda_base",
+   "fieldtype": "Link",
+   "label": "Moneda base",
+   "options": "Currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "moneda_empresa",
+   "fieldtype": "Link",
+   "label": "Moneda de empresa",
+   "options": "Currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tasa_empresa_base",
+   "fieldtype": "Float",
+   "label": "Tasa empresa a base",
+   "precision": "9",
+   "read_only": 1
+  },
+  {
+   "fieldname": "fondos_apertura",
+   "fieldtype": "Code",
+   "label": "Fondos de apertura",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ultimo_error",
+   "fieldtype": "Small Text",
+   "label": "Último error",
+   "read_only": 1
+  },
+  {
+   "fieldname": "medios_pago",
+   "fieldtype": "Code",
+   "label": "Medios de pago del turno",
+   "options": "JSON",
+   "read_only": 1
+  }
+ ],
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "report": 1
+  },
+  {
+   "role": "IE Cajero POS",
+   "read": 1,
+   "report": 1
+  },
+  {
+   "role": "IE Supervisor POS",
+   "read": 1,
+   "report": 1
+  }
+ ],
+ "modified": "2026-10-31 15:00:00.000000",
+ "autoname": "field:pos_opening_entry",
+ "track_changes": 1
+}

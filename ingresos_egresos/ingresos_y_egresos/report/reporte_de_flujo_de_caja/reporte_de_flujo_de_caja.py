@@ -1,141 +1,41 @@
-# Copyright (c) 2024, Ernesto Ruiz and contributors
-# For license information, please see license.txt
-
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate, add_days
+from frappe.utils import flt
+from ingresos_egresos.currency import aggregate, report_context
+
 
 def execute(filters=None):
-	columns = get_columns()
-	data = get_data(filters)
-	chart = get_chart(data)
-	return columns, data, None, chart
-
-def get_columns():
-	return [
-		{
-			"label": _("Sucursal"),
-			"fieldname": "sucursal",
-			"fieldtype": "Link",
-			"options": "Branch",
-			"width": 120
-		},
-		{
-			"label": _("Fecha"),
-			"fieldname": "fecha",
-			"fieldtype": "Date",
-			"width": 120
-		},
-		{
-			"label": _("Estado"),
-			"fieldname": "estado",
-			"fieldtype": "Data",
-			"width": 100
-		},
-		{
-			"label": _("Entradas (Base)"),
-			"fieldname": "ingresos",
-			"fieldtype": "Currency",
-			"width": 120
-		},
-		{
-			"label": _("Salidas (Base)"),
-			"fieldname": "egresos",
-			"fieldtype": "Currency",
-			"width": 120
-		},
-		{
-			"label": _("Flujo Neto (Base)"),
-			"fieldname": "neto",
-			"fieldtype": "Currency",
-			"width": 120
-		},
-		{
-			"label": _("Saldo Acumulado (Base)"),
-			"fieldname": "saldo_acumulado",
-			"fieldtype": "Currency",
-			"width": 140
-		}
-	]
-
-def get_data(filters):
-	condiciones = ""
-	if filters.get("sucursal"):
-		condiciones += f" AND sucursal = '{filters.get('sucursal')}'"
-	
-	# Obtener movimientos agrupados por sucursal, fecha y estado de vinculación (todo en base)
-	movimientos = frappe.db.sql(f"""
-		SELECT 
-			sucursal,
-			fecha_de_registro as fecha,
-            CASE WHEN vinculado = 1 THEN 'Cerrado' ELSE 'Pendiente' END as estado,
-			SUM(CASE WHEN tipo = 'Ingreso' THEN importe_base ELSE 0 END) as ingresos,
-			SUM(CASE WHEN tipo = 'Egreso' THEN importe_base ELSE 0 END) as egresos
-		FROM `tabMovimiento`
-		WHERE docstatus < 2
-		AND fecha_de_registro BETWEEN %s AND %s
-		{condiciones}
-		GROUP BY sucursal, fecha_de_registro, vinculado
-		ORDER BY fecha_de_registro ASC, sucursal ASC
-	""", (filters.get("from_date"), filters.get("to_date")), as_dict=1)
-
-	# Calcular Saldo Inicial (antes de la fecha 'from_date')
-	# Usando importe_base
-	saldo_inicial = frappe.db.sql(f"""
-		SELECT 
-			SUM(CASE WHEN tipo = 'Ingreso' THEN importe_base ELSE -importe_base END) as saldo
-		FROM `tabMovimiento`
-		WHERE docstatus < 2
-		AND fecha_de_registro < %s
-		{condiciones}
-	""", (filters.get("from_date")), as_dict=1)[0].saldo or 0.0
-
-	data = []
-	saldo_acumulado = flt(saldo_inicial)
-
-	for row in movimientos:
-		neto = flt(row.ingresos) - flt(row.egresos)
-		saldo_acumulado += neto
-		
-		data.append({
-			"sucursal": row.sucursal,
-			"fecha": row.fecha,
-            "estado": _(row.estado),
-			"ingresos": flt(row.ingresos, 2),
-			"egresos": flt(row.egresos, 2),
-			"neto": flt(neto, 2),
-			"saldo_acumulado": flt(saldo_acumulado, 2)
-		})
-
-	return data
-
-def get_chart(data):
-	labels = [f"{d.get('fecha')} ({d.get('estado')})" for d in data]
-	ingresos = [d.get("ingresos") for d in data]
-	egresos = [d.get("egresos") for d in data]
-	saldo = [d.get("saldo_acumulado") for d in data]
-
-	return {
-		"data": {
-			"labels": labels,
-			"datasets": [
-				{
-					"name": _("Ingresos"),
-					"values": ingresos,
-					"chartType": "bar"
-				},
-				{
-					"name": _("Egresos"),
-					"values": egresos,
-					"chartType": "bar"
-				},
-				{
-					"name": _("Saldo Acumulado"),
-					"values": saldo,
-					"chartType": "line"
-				}
-			]
-		},
-		"type": "axis-mixed", # Permite combinar barras y líneas
-		"colors": ["#28a745", "#dc3545", "#007bff"]
-	}
+    filters = filters or {}
+    currency, field, movement_filters = report_context(filters)
+    columns = [
+        {"label": _("Sucursal"), "fieldname": "sucursal", "fieldtype": "Link", "options": "Branch", "width": 120},
+        {"label": _("Fecha"), "fieldname": "fecha", "fieldtype": "Date", "width": 120},
+        {"label": _("Estado"), "fieldname": "estado", "fieldtype": "Data", "width": 110},
+        {"label": _("Moneda"), "fieldname": "moneda", "fieldtype": "Link", "options": "Currency", "width": 80},
+    ] + [{"label": _(label), "fieldname": name, "fieldtype": "Currency", "options": "moneda", "width": 140}
+         for name, label in [("ingresos", "Entradas"), ("egresos", "Salidas"), ("neto", "Flujo Neto"), ("saldo_acumulado", "Saldo Acumulado")]]
+    rows = frappe.get_list("Movimiento", filters=movement_filters,
+        fields=["sucursal", "fecha_de_registro", "vinculado", "tipo", aggregate("sum", field, "total")],
+        group_by="sucursal, fecha_de_registro, vinculado, tipo", order_by="fecha_de_registro asc, sucursal asc, vinculado asc", limit_page_length=0)
+    history_filters = dict(movement_filters, fecha_de_registro=["<", filters["from_date"]])
+    history = frappe.get_list("Movimiento", filters=history_filters,
+        fields=["tipo", aggregate("sum", field, "total")], group_by="tipo", limit_page_length=0)
+    balance = sum(flt(row.total) * (1 if row.tipo == "Ingreso" else -1) for row in history)
+    grouped = {}
+    for row in rows:
+        key = (row.fecha_de_registro, row.sucursal, row.vinculado)
+        entry = grouped.setdefault(key, dict(fecha=row.fecha_de_registro, sucursal=row.sucursal,
+            estado=_("Cerrado") if row.vinculado else _("Pendiente"), moneda=currency, ingresos=0, egresos=0))
+        entry["ingresos" if row.tipo == "Ingreso" else "egresos"] += flt(row.total)
+    data = []
+    for key in sorted(grouped):
+        entry = grouped[key]
+        entry["neto"] = entry["ingresos"] - entry["egresos"]
+        balance += entry["neto"]
+        entry["saldo_acumulado"] = balance
+        data.append(entry)
+    chart = {"type": "axis-mixed", "colors": ["#28a745", "#dc3545", "#007bff"], "data": {
+        "labels": [f"{row['fecha']} / {row['sucursal']} ({row['estado']})" for row in data],
+        "datasets": [{"name": _(label) + " (" + currency + ")", "values": [row[key] for row in data], "chartType": kind}
+            for key, label, kind in [("ingresos", "Ingresos", "bar"), ("egresos", "Egresos", "bar"), ("saldo_acumulado", "Saldo Acumulado", "line")]]}}
+    return columns, data, None, chart

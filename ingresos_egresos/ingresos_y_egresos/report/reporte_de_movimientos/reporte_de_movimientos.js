@@ -3,6 +3,8 @@
 
 frappe.query_reports["Reporte de Movimientos"] = {
 	"filters": [
+        {fieldname: "turno_pos", label: __("Turno POS"), fieldtype: "Link", options: "IE Turno POS"},
+        {fieldname: "moneda", label: __("Moneda (vacío: consolidado base)"), fieldtype: "Link", options: "Currency"},
 		{
 			"fieldname": "fecha_inicio",
 			"label": "Fecha Inicial",

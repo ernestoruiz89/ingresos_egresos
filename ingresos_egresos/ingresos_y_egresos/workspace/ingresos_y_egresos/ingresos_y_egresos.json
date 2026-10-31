@@ -1,98 +1,90 @@
 {
  "charts": [],
- "content": "[{\"id\":\"pgUAYC3CNT\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Ingresos y Egresos</span>\",\"col\":12}},{\"id\":\"B3Wqmrt4bt\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Dashboard Movimientos\",\"col\":3}},{\"id\":\"2juaQtZ4pH\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"heZQRA-WGr\",\"type\":\"card\",\"data\":{\"card_name\":\"Formularios\",\"col\":4}},{\"id\":\"6-yEQCN2vh\",\"type\":\"card\",\"data\":{\"card_name\":\"Reportes\",\"col\":4}}]",
+ "content": "[{\"id\": \"ie-heading\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\">Ingresos y Egresos</span>\", \"col\": 12}}, {\"id\": \"ie-shortcut-0\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Tablero de movimientos\", \"col\": 4}}, {\"id\": \"ie-shortcut-1\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Movimientos\", \"col\": 4}}, {\"id\": \"ie-shortcut-2\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Cierres de caja\", \"col\": 4}}, {\"id\": \"ie-card-0\", \"type\": \"card\", \"data\": {\"card_name\": \"Operaciones\", \"col\": 4}}, {\"id\": \"ie-card-1\", \"type\": \"card\", \"data\": {\"card_name\": \"Reportes\", \"col\": 4}}, {\"id\": \"ie-card-2\", \"type\": \"card\", \"data\": {\"card_name\": \"Configuración\", \"col\": 4}}]",
  "creation": "2026-02-12 14:02:48.685705",
  "custom_blocks": [],
  "docstatus": 0,
  "doctype": "Workspace",
  "for_user": "",
  "hide_custom": 0,
- "icon": "loan",
+ "icon": "arrows-down-up",
  "idx": 0,
  "indicator_color": "green",
  "is_hidden": 0,
  "label": "Ingresos y Egresos",
  "links": [
   {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Formularios",
-   "link_count": 3,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
+   "type": "Card Break",
+   "label": "Operaciones",
+   "link_count": 3
   },
   {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Movimiento",
-   "link_count": 0,
+   "type": "Link",
+   "label": "Movimientos",
+   "link_type": "DocType",
    "link_to": "Movimiento",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
+   "is_query_report": 0
   },
   {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Registro de Cierre de Movimiento",
-   "link_count": 0,
+   "type": "Link",
+   "label": "Cierres de caja",
+   "link_type": "DocType",
    "link_to": "Registro de Cierre de Movimiento",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
+   "is_query_report": 0
   },
   {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "IE Codigo",
-   "link_count": 0,
-   "link_to": "IE Codigo",
+   "type": "Link",
+   "label": "Turnos POS",
    "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
+   "link_to": "IE Turno POS"
   },
   {
-   "hidden": 0,
-   "is_query_report": 0,
+   "type": "Card Break",
    "label": "Reportes",
-   "link_count": 3,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
+   "link_count": 3
   },
   {
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Reporte de Movimientos",
-   "link_count": 0,
+   "type": "Link",
+   "label": "Movimientos",
+   "link_type": "Report",
    "link_to": "Reporte de Movimientos",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
+   "is_query_report": 1
   },
   {
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Reporte de Movimientos por Concepto",
-   "link_count": 0,
+   "type": "Link",
+   "label": "Movimientos por concepto",
+   "link_type": "Report",
    "link_to": "Reporte de Movimientos por Concepto",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
+   "is_query_report": 1
   },
   {
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Reporte de Flujo de Caja",
-   "link_count": 0,
-   "link_to": "Reporte de Flujo de Caja",
+   "type": "Link",
+   "label": "Flujo de caja",
    "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
+   "link_to": "Reporte de Flujo de Caja",
+   "is_query_report": 1
+  },
+  {
+   "type": "Card Break",
+   "label": "Configuración",
+   "link_count": 2
+  },
+  {
+   "type": "Link",
+   "label": "Configuración y POS",
+   "link_type": "DocType",
+   "link_to": "IE Configuracion",
+   "is_query_report": 0
+  },
+  {
+   "type": "Link",
+   "label": "Conceptos de ingresos y egresos",
+   "link_type": "DocType",
+   "link_to": "IE Codigo",
+   "is_query_report": 0
   }
  ],
- "modified": "2026-02-12 14:42:33.572938",
+ "modified": "2026-10-31 20:45:00.000000",
  "modified_by": "Administrator",
  "module": "Ingresos y Egresos",
  "name": "Ingresos y Egresos",
@@ -103,6 +95,9 @@
  "quick_lists": [],
  "roles": [
   {
+   "role": "System Manager"
+  },
+  {
    "role": "Accounts Manager"
   },
   {
@@ -112,11 +107,24 @@
  "sequence_id": 2.0,
  "shortcuts": [
   {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "Dashboard Movimientos",
+   "type": "Page",
+   "label": "Tablero de movimientos",
    "link_to": "dashboard-movimientos",
-   "type": "Page"
+   "color": "Green"
+  },
+  {
+   "type": "DocType",
+   "label": "Movimientos",
+   "link_to": "Movimiento",
+   "color": "Green",
+   "doc_view": "List"
+  },
+  {
+   "type": "DocType",
+   "label": "Cierres de caja",
+   "link_to": "Registro de Cierre de Movimiento",
+   "color": "Green",
+   "doc_view": "List"
   }
  ],
  "title": "Ingresos y Egresos"
