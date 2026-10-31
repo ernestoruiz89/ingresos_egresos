@@ -19,6 +19,8 @@ class Movimiento(Document):
         validate_movement(self)
         from ingresos_egresos.asset_integration import validate_movement as validate_asset
         validate_asset(self)
+        from ingresos_egresos.deferred import validate_movement as validate_deferred
+        validate_deferred(self)
         old_turn = frappe.db.get_value("Movimiento", self.name, "turno_pos") if not self.is_new() else None
         if (old_turn or self.turno_pos or self.origen_pos or self.clave_origen_pos) and not frappe.flags.ie_pos_internal:
             frappe.throw(_("Los movimientos POS se gestionan desde la integración y no se pueden desvincular."))

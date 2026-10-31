@@ -10,7 +10,8 @@
   "integrar_pos",
   "perfiles_pos",
   "contabilidad_section",
-  "cuentas_caja"
+  "cuentas_caja",
+  "procesar_diferidos_automaticamente"
  ],
  "fields": [
   {
@@ -50,6 +51,13 @@
    "label": "Cuentas de caja",
    "options": "IE Cuenta Caja",
    "description": "Una cuenta de caja o banco por sucursal y moneda. La moneda de la cuenta debe coincidir con la moneda configurada."
+  },
+  {
+   "fieldname": "procesar_diferidos_automaticamente",
+   "fieldtype": "Check",
+   "label": "Contabilizar cuotas diferidas automáticamente",
+   "default": "0",
+   "description": "El proceso diario crea y confirma las cuotas vencidas usando los permisos de quien autorizó el calendario. También puede procesarlas manualmente desde cada calendario."
   }
  ],
  "index_web_pages_for_search": 1,

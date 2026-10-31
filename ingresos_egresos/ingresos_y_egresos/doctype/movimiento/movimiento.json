@@ -22,6 +22,7 @@
   "moneda_base",
   "importe_base",
   "es_activo",
+  "es_diferido",
   "datos_activo_section",
   "item_activo",
   "nombre_activo",
@@ -31,6 +32,10 @@
   "fecha_uso_activo",
   "vida_util_meses",
   "valor_residual",
+  "diferido_section",
+  "inicio_diferimiento",
+  "diferido_column",
+  "meses_diferimiento",
   "section_break_jkrc",
   "descripcion",
   "contabilidad_tab",
@@ -38,6 +43,7 @@
   "estado_contable",
   "asiento_contable",
   "activo_fijo",
+  "diferimiento",
   "contabilidad_column",
   "company",
   "cuentas_section",
@@ -493,6 +499,47 @@
    "unique": 1,
    "read_only": 1,
    "hidden": 1
+  },
+  {
+   "fieldname": "es_diferido",
+   "fieldtype": "Check",
+   "label": "Distribuir entre meses",
+   "default": "0",
+   "description": "El cobro o pago afecta caja completo; el ingreso o gasto se reconoce mensualmente."
+  },
+  {
+   "fieldname": "diferido_section",
+   "fieldtype": "Section Break",
+   "label": "Diferimiento mensual",
+   "depends_on": "es_diferido"
+  },
+  {
+   "fieldname": "inicio_diferimiento",
+   "fieldtype": "Date",
+   "label": "Inicio del servicio",
+   "mandatory_depends_on": "es_diferido"
+  },
+  {
+   "fieldname": "diferido_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "meses_diferimiento",
+   "fieldtype": "Int",
+   "label": "Número de meses",
+   "default": "12",
+   "mandatory_depends_on": "es_diferido",
+   "description": "Cuotas mensuales al cierre de cada mes; la última ajusta el redondeo."
+  },
+  {
+   "fieldname": "diferimiento",
+   "fieldtype": "Link",
+   "label": "Calendario de diferimiento",
+   "options": "IE Diferimiento",
+   "read_only": 1,
+   "no_copy": 1,
+   "allow_on_submit": 1,
+   "depends_on": "diferimiento"
   }
  ],
  "index_web_pages_for_search": 1,

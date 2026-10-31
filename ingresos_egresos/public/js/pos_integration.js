@@ -48,7 +48,7 @@ frappe.ie_pos.install = function() {
 (() => {
     const page = frappe.pages["point-of-sale"], original = page.on_page_load;
     page.on_page_load = async function(wrapper) {
-        await frappe.require(["ie_assets.bundle.js", "ie_pos_modals.bundle.js"]);
+        await frappe.require(["ie_assets.bundle.js", "ie_deferred.bundle.js", "ie_pos_modals.bundle.js"]);
         await frappe.require("point-of-sale.bundle.js");
         frappe.ie_pos.install();
         return original(wrapper);

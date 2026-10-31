@@ -1,5 +1,5 @@
 frappe.pages['dashboard-movimientos'].on_page_load = async function (wrapper) {
-    await frappe.require("ie_assets.bundle.js");
+    await frappe.require(["ie_assets.bundle.js", "ie_deferred.bundle.js"]);
     var page = frappe.ui.make_app_page({
         parent: wrapper,
         title: 'Dashboard de Control',
@@ -406,6 +406,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = async function (wrapper) {
             controls.importe, controls.tasa_de_cambio,
             {fieldtype: 'Column Break'}, controls.moneda, controls.importe_base, controls.moneda_base,
             ...frappe.ie_assets.fields(tipo, doc, read_only),
+            ...frappe.ie_deferred.fields(doc, read_only),
             {fieldtype: 'Section Break', label: 'Descripción y soportes'}, controls.descripcion,
             {fieldtype: 'Column Break'},
             ...fields.filter(field => ['file_upload_area', 'existing_attachments', 'new_file_upload_area'].includes(field.fieldname))
@@ -493,6 +494,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = async function (wrapper) {
 
                 frappe.ie_currency.bind_dialog(d);
                 frappe.ie_assets.bind(d);
+                frappe.ie_deferred.bind(d);
                 // ... (Drag & Drop rendering code) ...
                 let $wrapper = d.fields_dict.file_upload_area.$wrapper;
                 $wrapper.html(`
@@ -777,6 +779,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = async function (wrapper) {
 
                             frappe.ie_currency.bind_dialog(d, doc, read_only);
                             if (!read_only) frappe.ie_assets.bind(d, doc);
+                            if (!read_only) frappe.ie_deferred.bind(d);
                             d.show();
                         }
                     });

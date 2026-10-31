@@ -171,7 +171,8 @@ def rates(opening, moneda, fecha=None):
 def register_movement(opening, tipo, clasificacion, importe, moneda, medio_pago,
                       tasa_de_cambio=None, tasa_empresa=None, referencia=None, descripcion=None, request_id=None,
                       es_activo=0, item_activo=None, nombre_activo=None, ubicacion_activo=None, fecha_uso_activo=None,
-                      vida_util_meses=None, valor_residual=0, categoria_activo=None):
+                      vida_util_meses=None, valor_residual=0, categoria_activo=None,
+                      es_diferido=0, inicio_diferimiento=None, meses_diferimiento=12):
     turn = get_turn(opening, lock=True)
     assert_open(turn)
     if tipo not in ("Ingreso", "Egreso") or clasificacion not in concepts(tipo):
@@ -198,6 +199,7 @@ def register_movement(opening, tipo, clasificacion, importe, moneda, medio_pago,
         es_activo=cint(es_activo), item_activo=item_activo, nombre_activo=nombre_activo,
         ubicacion_activo=ubicacion_activo, fecha_uso_activo=fecha_uso_activo,
         vida_util_meses=vida_util_meses, valor_residual=valor_residual,
+        es_diferido=cint(es_diferido), inicio_diferimiento=inicio_diferimiento, meses_diferimiento=meses_diferimiento,
         fecha_operacion=date, clave_origen_pos=key)).name}
 
 

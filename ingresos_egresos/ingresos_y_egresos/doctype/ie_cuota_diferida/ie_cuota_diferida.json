@@ -1,0 +1,64 @@
+{
+ "doctype": "DocType",
+ "name": "IE Cuota Diferida",
+ "module": "Ingresos y Egresos",
+ "istable": 1,
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "numero",
+  "fecha",
+  "moneda",
+  "importe",
+  "estado",
+  "asiento_contable"
+ ],
+ "fields": [
+  {
+   "fieldname": "numero",
+   "fieldtype": "Int",
+   "label": "Cuota",
+   "read_only": 1
+  },
+  {
+   "fieldname": "fecha",
+   "fieldtype": "Date",
+   "label": "Fecha",
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "moneda",
+   "fieldtype": "Link",
+   "label": "Moneda",
+   "options": "Currency",
+   "hidden": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "importe",
+   "fieldtype": "Currency",
+   "label": "Importe",
+   "options": "moneda",
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "estado",
+   "fieldtype": "Select",
+   "label": "Estado",
+   "options": "Pendiente\nContabilizado\nAnulado",
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "asiento_contable",
+   "fieldtype": "Link",
+   "label": "Asiento contable",
+   "options": "Journal Entry",
+   "in_list_view": 1,
+   "read_only": 1
+  }
+ ],
+ "permissions": []
+}

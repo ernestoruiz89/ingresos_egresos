@@ -17,6 +17,7 @@ class TestMovementAccounting(IntegrationTestCase):
         self.currency = frappe.db.get_value("Company", self.company, "default_currency")
         frappe.db.set_single_value("IE Configuracion", "moneda_base", self.currency)
         frappe.db.set_single_value("IE Configuracion", "integrar_pos", 0)
+        frappe.db.set_single_value("IE Configuracion", "procesar_diferidos_automaticamente", 0)
         self.branch = frappe.get_doc(dict(doctype="Branch", branch="IE Contab " + frappe.generate_hash(length=7))).insert().name
         self.cash = frappe.db.get_value("Account", dict(company=self.company, account_type="Cash", is_group=0), "name")
         self.income = frappe.db.get_value("Account", dict(company=self.company, root_type="Income", is_group=0), "name")
@@ -342,3 +343,245 @@ class TestMovementAccounting(IntegrationTestCase):
         self.assertEqual(frappe.db.count("Journal Entry", {"custom_ie_movimiento": ["in", [ordinary.name, asset.name]]}), 0)
         ordinary.reload(); asset.reload()
         self.assertFalse(ordinary.asiento_contable or asset.asiento_contable)
+
+    def deferred_source(self, kind="Egreso", amount=100, months=3, future=False):
+        from frappe.utils import add_months, get_first_day
+        start = get_first_day(add_months(nowdate(), 1 if future else -3))
+        source = self.source(kind, amount)
+        source.update(dict(fecha_de_registro=start, es_diferido=1, inicio_diferimiento=start, meses_diferimiento=months))
+        source.save()
+        root = "Asset" if kind == "Egreso" else "Liability"
+        parent = frappe.db.get_value("Account", dict(company=self.company, root_type=root, is_group=1), "name")
+        account = frappe.get_doc(dict(doctype="Account", company=self.company, account_name="IE Diferido " + frappe.generate_hash(length=7),
+            parent_account=parent, is_group=0)).insert().name
+        return source, account
+
+    def post_deferred(self, source, account):
+        options = self.entry(source); options["cuenta_diferida"] = account
+        result = accounting.post_movements([options])
+        self.assertEqual(result["status"], "posted", result)
+        source.reload()
+        return frappe.get_doc("IE Diferimiento", source.diferimiento), frappe.get_doc("Journal Entry", source.asiento_contable)
+
+    def test_deferred_expense_initial_posts_balance_not_expense_and_preserves_cash(self):
+        source, account = self.deferred_source()
+        plan, initial = self.post_deferred(source, account)
+        self.assertEqual((initial.accounts[0].credit, initial.accounts[1].account, initial.accounts[1].debit), (100, account, 100))
+        self.assertEqual((plan.importe, plan.importe_pendiente, plan.importe_reconocido), (100, 100, 0))
+        self.assertEqual([row.importe for row in plan.cuotas], [33.33, 33.33, 33.34])
+        self.assertEqual(frappe.db.count("Movimiento", {"sucursal": self.branch}), 1)
+        self.assertEqual(frappe.db.count("Sales Invoice", {"remarks": source.name}), 0)
+
+    def test_deferred_income_recognizes_all_due_months_with_native_balanced_journals(self):
+        from ingresos_egresos import deferred
+        source, account = self.deferred_source("Ingreso")
+        plan, initial = self.post_deferred(source, account)
+        self.assertEqual((initial.accounts[0].debit, initial.accounts[1].credit, initial.accounts[1].account), (100, 100, account))
+        result = deferred.process(plan.name)
+        self.assertEqual((result["status"], len(result["asientos"])), ("posted", 3))
+        plan.reload()
+        self.assertEqual((plan.estado, plan.importe_reconocido, plan.importe_pendiente), ("Completado", 100, 0))
+        for name in result["asientos"]:
+            journal = frappe.get_doc("Journal Entry", name)
+            self.assertEqual((journal.docstatus, journal.total_debit), (1, journal.total_credit))
+            self.assertEqual((journal.accounts[0].account, journal.accounts[1].account), (account, self.income))
+            self.assertFalse(any(row.account == self.cash for row in journal.accounts))
+        self.assertEqual(deferred.process(plan.name)["asientos"], [])
+        self.assertEqual(frappe.db.count("Movimiento", {"sucursal": self.branch}), 1)
+
+    def test_deferred_never_posts_future_quota_and_can_pause_resume(self):
+        from ingresos_egresos import deferred
+        source, account = self.deferred_source(future=True)
+        plan, _initial = self.post_deferred(source, account)
+        self.assertEqual(deferred.process(plan.name)["asientos"], [])
+        self.assertEqual(deferred.set_paused(plan.name, 1), "Pausado")
+        self.assertEqual(deferred.process(plan.name)["asientos"], [])
+        self.assertEqual(deferred.set_paused(plan.name, 0), "Activo")
+
+    def test_deferred_foreign_cash_is_converted_once_then_recognized_in_company_currency(self):
+        from ingresos_egresos import deferred
+        self.foreign_cash("USD")
+        source, account = self.deferred_source(amount=10)
+        source.update(dict(moneda="USD", tasa_de_cambio=80)); source.save()
+        plan, initial = self.post_deferred(source, account)
+        self.assertEqual((initial.total_debit, plan.importe, source.importe_base), (800, 800, 800))
+        self.assertEqual(deferred.process(plan.name)["status"], "posted")
+        plan.reload(); self.assertEqual(plan.importe_reconocido, 800)
+
+    def test_deferred_missing_balance_account_returns_modal_requirements_without_posting(self):
+        source, _account = self.deferred_source()
+        frappe.db.set_value("Company", self.company, "default_deferred_expense_account", None)
+        frappe.clear_document_cache("Company", self.company)
+        result = accounting.post_movements([self.entry(source)])
+        self.assertEqual(result["status"], "needs_input")
+        self.assertIn("cuenta_diferida", result["rows"][0]["faltantes"])
+        self.assertEqual(frappe.db.count("Journal Entry", {"custom_ie_movimiento": source.name}), 0)
+
+    def test_deferred_uses_native_company_default_account(self):
+        source, account = self.deferred_source()
+        frappe.db.set_value("Company", self.company, "default_deferred_expense_account", account)
+        frappe.clear_document_cache("Company", self.company)
+        result = accounting.post_movements([self.entry(source)])
+        self.assertEqual(result["status"], "posted", result)
+        source.reload(); self.assertEqual(frappe.db.get_value("IE Diferimiento", source.diferimiento, "cuenta_diferida"), account)
+
+    def test_deferred_rejects_wrong_account_and_invalid_periods(self):
+        source, _account = self.deferred_source()
+        options = self.entry(source); options["cuenta_diferida"] = self.cash
+        with self.assertRaises(frappe.ValidationError): accounting.post_movements([options])
+        for months in (0, -1, 121):
+            source.meses_diferimiento = months
+            with self.assertRaises(frappe.ValidationError): source.save()
+        source.meses_diferimiento = 3; source.es_activo = 1
+        with self.assertRaises(frappe.ValidationError): source.save()
+
+    def test_deferred_recognition_failure_rolls_back_all_due_quota_and_persists_error(self):
+        from ingresos_egresos import deferred
+        source, account = self.deferred_source()
+        plan, _initial = self.post_deferred(source, account)
+        frappe.db.set_value("Account", self.expense, "disabled", 1)
+        result = deferred.process(plan.name)
+        self.assertEqual(result["status"], "error")
+        self.assertEqual(frappe.db.count("Journal Entry", {"custom_ie_diferimiento": plan.name}), 0)
+        plan.reload(); self.assertTrue(plan.ultimo_error)
+        self.assertEqual((plan.importe_reconocido, plan.importe_pendiente), (0, 100))
+
+    def test_deferred_cancellation_pauses_and_requires_reverse_order_before_initial(self):
+        from ingresos_egresos import deferred
+        source, account = self.deferred_source()
+        plan, initial = self.post_deferred(source, account)
+        names = deferred.process(plan.name)["asientos"]
+        with self.assertRaises(frappe.ValidationError): initial.cancel()
+        with self.assertRaises(frappe.ValidationError): frappe.get_doc("Journal Entry", names[0]).cancel()
+        for name in reversed(names): frappe.get_doc("Journal Entry", name).cancel()
+        plan.reload(); self.assertEqual((plan.estado, plan.importe_pendiente), ("Pausado", 100))
+        self.assertEqual(deferred.process(plan.name)["asientos"], [])
+        initial.reload(); initial.cancel(); plan.reload(); source.reload()
+        self.assertEqual((plan.estado, source.estado_contable), ("Anulado", accounting.CANCELLED))
+        with self.assertRaises(frappe.ValidationError): deferred.set_paused(plan.name, 0)
+        new, _journal = self.post_deferred(source, account)
+        self.assertNotEqual(plan.name, new.name)
+
+    def test_deferred_cancelled_quota_can_be_explicitly_reprocessed_without_losing_old_journal(self):
+        from ingresos_egresos import deferred
+        source, account = self.deferred_source()
+        plan, _initial = self.post_deferred(source, account)
+        names = deferred.process(plan.name)["asientos"]
+        old = frappe.get_doc("Journal Entry", names[-1]); old.cancel()
+        deferred.set_paused(plan.name, 0)
+        new = deferred.process(plan.name)["asientos"]
+        self.assertEqual(len(new), 1)
+        self.assertNotEqual(old.name, new[0]); old.reload(); self.assertEqual(old.docstatus, 2)
+        self.assertEqual(frappe.db.count("Journal Entry", {"custom_ie_diferimiento": plan.name, "docstatus": 1}), 3)
+
+    def test_deferred_plan_and_recognition_links_cannot_be_forged_or_removed(self):
+        from ingresos_egresos import deferred
+        source, account = self.deferred_source()
+        plan, _initial = self.post_deferred(source, account)
+        plan.meses = 10
+        with self.assertRaises((frappe.PermissionError, frappe.ValidationError)): plan.save()
+        journal = frappe.get_doc("Journal Entry", deferred.process(plan.name)["asientos"][0])
+        journal.custom_ie_diferimiento = None
+        with self.assertRaises(frappe.ValidationError): journal.save()
+        source.diferimiento = None
+        with self.assertRaises(frappe.ValidationError): source.save()
+
+    def test_deferred_automatic_processing_is_opt_in_and_respects_original_permissions(self):
+        from ingresos_egresos import deferred
+        source, account = self.deferred_source()
+        plan, _initial = self.post_deferred(source, account)
+        deferred.process_due(); plan.reload(); self.assertEqual(plan.importe_reconocido, 0)
+        frappe.db.set_single_value("IE Configuracion", "procesar_diferidos_automaticamente", 1)
+        deferred.process_due(); plan.reload(); self.assertEqual(plan.estado, "Completado")
+        self.assertEqual(frappe.session.user, "Administrator")
+
+    def test_deferred_guest_cannot_process_or_read_calendar(self):
+        from ingresos_egresos import deferred
+        source, account = self.deferred_source()
+        plan, _initial = self.post_deferred(source, account)
+        frappe.set_user("Guest")
+        try:
+            self.assertFalse(frappe.has_permission("IE Diferimiento", "read", doc=plan))
+            with self.assertRaises(frappe.PermissionError): deferred.process(plan.name)
+        finally: frappe.set_user("Administrator")
+
+    def test_deferred_recognition_second_failure_rolls_back_first_submitted_quota(self):
+        from ingresos_egresos import deferred
+        from erpnext.accounts.doctype.journal_entry.journal_entry import JournalEntry
+        source, account = self.deferred_source()
+        plan, _initial = self.post_deferred(source, account)
+        real_submit = JournalEntry.submit
+        calls = []
+        def fail_second(journal, *args, **kwargs):
+            calls.append(journal.name)
+            if len(calls) == 2: raise RuntimeError("simulated second quota failure")
+            return real_submit(journal, *args, **kwargs)
+        with patch.object(JournalEntry, "submit", fail_second):
+            result = deferred.process(plan.name)
+        self.assertEqual(result["status"], "error")
+        self.assertEqual(frappe.db.count("Journal Entry", {"custom_ie_diferimiento": plan.name}), 0)
+        plan.reload(); self.assertTrue(all(row.estado == "Pendiente" and not row.asiento_contable for row in plan.cuotas))
+        self.assertEqual(deferred.process(plan.name)["status"], "posted")
+
+    def test_deferred_small_amount_plan_failure_rolls_back_initial_cash_journal(self):
+        source, account = self.deferred_source(amount=0.01, months=12)
+        options = self.entry(source); options["cuenta_diferida"] = account
+        with self.assertRaises(frappe.ValidationError): accounting.post_movements([options])
+        self.assertEqual(frappe.db.count("Journal Entry", {"custom_ie_movimiento": source.name}), 0)
+        self.assertEqual(frappe.db.count("IE Diferimiento", {"movimiento": source.name}), 0)
+
+    def test_deferred_list_and_automatic_job_respect_movement_specific_branch_permissions(self):
+        from ingresos_egresos import deferred
+        source, account = self.deferred_source()
+        first, _initial = self.post_deferred(source, account)
+        other = frappe.get_doc(dict(doctype="Branch", branch="IE Otro " + frappe.generate_hash(length=7))).insert().name
+        config = frappe.get_single("IE Configuracion")
+        config.append("cuentas_caja", dict(sucursal=other, moneda=self.currency, company=self.company, cuenta_caja=self.cash, centro_de_costos=self.cost_center))
+        config.save()
+        second_source, second_account = self.deferred_source()
+        second_source.sucursal = other; second_source.save()
+        second, _initial = self.post_deferred(second_source, second_account)
+        user = frappe.get_doc(dict(doctype="User", email="ie-diferido-" + frappe.generate_hash(length=7) + "@example.invalid",
+            first_name="IE Contabilidad", user_type="System User", send_welcome_email=0,
+            roles=[dict(role=r) for r in ("System Manager", "Accounts Manager")])).insert()
+        frappe.get_doc(dict(doctype="User Permission", user=user.name, allow="Branch", for_value=self.branch,
+            apply_to_all_doctypes=0, applicable_for="Movimiento")).insert()
+        frappe.set_user(user.name)
+        try:
+            self.assertEqual(frappe.get_list("IE Diferimiento", pluck="name"), [first.name])
+            self.assertFalse(frappe.has_permission("IE Diferimiento", "read", doc=second))
+            with self.assertRaises(frappe.PermissionError): deferred.process(second.name)
+        finally: frappe.set_user("Administrator")
+        for plan in (first, second): frappe.db.set_value("IE Diferimiento", plan.name, "autorizado_por", user.name)
+        frappe.db.set_single_value("IE Configuracion", "procesar_diferidos_automaticamente", 1)
+        deferred.process_due(); first.reload(); second.reload()
+        self.assertEqual(first.estado, "Completado")
+        self.assertEqual(second.importe_reconocido, 0)
+        self.assertTrue(second.ultimo_error)
+
+    def test_upgrading_preserves_custom_concepts_and_their_account_defaults(self):
+        from frappe.utils.fixtures import sync_fixtures
+        from ingresos_egresos.pos_setup import seed_concepts
+        doc = frappe.get_doc("IE Codigo", "Egreso")
+        doc.code_values[0].cuenta_contable = self.expense
+        doc.code_values[0].active = 0
+        doc.append("code_values", dict(code_value="Seguro anual QA", cuenta_contable=self.expense, active=1))
+        doc.save()
+        before = [(row.name, row.code_value, row.active, row.cuenta_contable) for row in doc.code_values]
+        sync_fixtures("ingresos_egresos"); seed_concepts(); doc.reload()
+        self.assertEqual([(row.name, row.code_value, row.active, row.cuenta_contable) for row in doc.code_values], before)
+
+    def test_existing_independent_journal_cannot_be_attached_to_a_calendar_or_movement(self):
+        ordinary = self.post(self.source())
+        generic = frappe.copy_doc(ordinary, ignore_no_copy=False)
+        generic.docstatus = 0
+        generic.posting_date = nowdate()
+        generic.custom_ie_movimiento = None
+        generic.insert(); generic.submit()
+        source, account = self.deferred_source()
+        plan, _initial = self.post_deferred(source, account)
+        generic.custom_ie_diferimiento = plan.name
+        generic.custom_ie_cuota = plan.cuotas[0].name
+        with self.assertRaises(frappe.ValidationError): generic.save()
+        generic.reload(); generic.custom_ie_movimiento = source.name
+        with self.assertRaises(frappe.ValidationError): generic.save()

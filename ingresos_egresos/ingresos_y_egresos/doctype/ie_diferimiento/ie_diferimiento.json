@@ -1,0 +1,227 @@
+{
+ "doctype": "DocType",
+ "name": "IE Diferimiento",
+ "module": "Ingresos y Egresos",
+ "autoname": "IE-DIF-.YYYY.-.#####",
+ "engine": "InnoDB",
+ "field_order": [
+  "resumen",
+  "movimiento",
+  "asiento_inicial",
+  "estado",
+  "resumen_column",
+  "company",
+  "sucursal",
+  "tipo",
+  "cuentas_section",
+  "cuenta_diferida",
+  "cuenta_resultado",
+  "centro_de_costos",
+  "cuentas_column",
+  "fecha_inicio",
+  "meses",
+  "moneda",
+  "totales_section",
+  "importe",
+  "importe_reconocido",
+  "totales_column",
+  "importe_pendiente",
+  "ultimo_error",
+  "calendario_section",
+  "cuotas",
+  "auditoria_section",
+  "autorizado_por",
+  "turno_pos"
+ ],
+ "fields": [
+  {
+   "fieldname": "resumen",
+   "fieldtype": "Section Break",
+   "label": "Resumen"
+  },
+  {
+   "fieldname": "movimiento",
+   "fieldtype": "Link",
+   "label": "Movimiento",
+   "options": "Movimiento",
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "asiento_inicial",
+   "fieldtype": "Link",
+   "label": "Asiento inicial",
+   "options": "Journal Entry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "estado",
+   "fieldtype": "Select",
+   "label": "Estado",
+   "options": "Activo\nCompletado\nPausado\nAnulado",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "resumen_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Empresa",
+   "options": "Company",
+   "in_standard_filter": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "sucursal",
+   "fieldtype": "Link",
+   "label": "Sucursal",
+   "options": "Branch",
+   "in_standard_filter": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "tipo",
+   "fieldtype": "Select",
+   "label": "Tipo",
+   "options": "Ingreso\nEgreso",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cuentas_section",
+   "fieldtype": "Section Break",
+   "label": "Cuentas y período",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "cuenta_diferida",
+   "fieldtype": "Link",
+   "label": "Cuenta diferida",
+   "options": "Account",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cuenta_resultado",
+   "fieldtype": "Link",
+   "label": "Cuenta de ingreso o gasto",
+   "options": "Account",
+   "read_only": 1
+  },
+  {
+   "fieldname": "centro_de_costos",
+   "fieldtype": "Link",
+   "label": "Centro de costos",
+   "options": "Cost Center",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cuentas_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "fecha_inicio",
+   "fieldtype": "Date",
+   "label": "Inicio del servicio",
+   "read_only": 1
+  },
+  {
+   "fieldname": "meses",
+   "fieldtype": "Int",
+   "label": "Número de meses",
+   "read_only": 1
+  },
+  {
+   "fieldname": "moneda",
+   "fieldtype": "Link",
+   "label": "Moneda de empresa",
+   "options": "Currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "totales_section",
+   "fieldtype": "Section Break",
+   "label": "Importes"
+  },
+  {
+   "fieldname": "importe",
+   "fieldtype": "Currency",
+   "label": "Total diferido",
+   "options": "moneda",
+   "read_only": 1
+  },
+  {
+   "fieldname": "importe_reconocido",
+   "fieldtype": "Currency",
+   "label": "Reconocido",
+   "options": "moneda",
+   "read_only": 1
+  },
+  {
+   "fieldname": "totales_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "importe_pendiente",
+   "fieldtype": "Currency",
+   "label": "Pendiente",
+   "options": "moneda",
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "ultimo_error",
+   "fieldtype": "Small Text",
+   "label": "Último error",
+   "depends_on": "ultimo_error",
+   "read_only": 1
+  },
+  {
+   "fieldname": "calendario_section",
+   "fieldtype": "Section Break",
+   "label": "Calendario mensual"
+  },
+  {
+   "fieldname": "cuotas",
+   "fieldtype": "Table",
+   "label": "Cuotas",
+   "options": "IE Cuota Diferida",
+   "read_only": 1
+  },
+  {
+   "fieldname": "auditoria_section",
+   "fieldtype": "Section Break",
+   "label": "Auditoría",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "autorizado_por",
+   "fieldtype": "Link",
+   "label": "Autorizado por",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "turno_pos",
+   "fieldtype": "Link",
+   "label": "Turno POS",
+   "options": "IE Turno POS",
+   "depends_on": "turno_pos",
+   "read_only": 1
+  }
+ ],
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "links": []
+}
