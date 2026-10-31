@@ -169,7 +169,9 @@ def rates(opening, moneda, fecha=None):
 
 @frappe.whitelist(methods=["POST"])
 def register_movement(opening, tipo, clasificacion, importe, moneda, medio_pago,
-                      tasa_de_cambio=None, tasa_empresa=None, referencia=None, descripcion=None, request_id=None):
+                      tasa_de_cambio=None, tasa_empresa=None, referencia=None, descripcion=None, request_id=None,
+                      es_activo=0, item_activo=None, nombre_activo=None, ubicacion_activo=None, fecha_uso_activo=None,
+                      vida_util_meses=None, valor_residual=0, categoria_activo=None):
     turn = get_turn(opening, lock=True)
     assert_open(turn)
     if tipo not in ("Ingreso", "Egreso") or clasificacion not in concepts(tipo):
@@ -193,6 +195,9 @@ def register_movement(opening, tipo, clasificacion, importe, moneda, medio_pago,
         importe=flt(importe), moneda=moneda, tasa_de_cambio=flt(rate), tasa_empresa=flt(company_rate),
         importe_empresa=flt(flt(importe) * flt(company_rate), precision()), medio_pago=medio_pago,
         origen_pos="Manual", referencia=referencia, descripcion=descripcion,
+        es_activo=cint(es_activo), item_activo=item_activo, nombre_activo=nombre_activo,
+        ubicacion_activo=ubicacion_activo, fecha_uso_activo=fecha_uso_activo,
+        vida_util_meses=vida_util_meses, valor_residual=valor_residual,
         fecha_operacion=date, clave_origen_pos=key)).name}
 
 

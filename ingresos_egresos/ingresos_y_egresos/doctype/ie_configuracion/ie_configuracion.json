@@ -8,7 +8,9 @@
   "moneda_base",
   "integracion_pos_section",
   "integrar_pos",
-  "perfiles_pos"
+  "perfiles_pos",
+  "contabilidad_section",
+  "cuentas_caja"
  ],
  "fields": [
   {
@@ -36,6 +38,18 @@
    "fieldtype": "Table",
    "label": "Perfiles POS y sucursales",
    "options": "IE Perfil POS"
+  },
+  {
+   "fieldname": "contabilidad_section",
+   "fieldtype": "Section Break",
+   "label": "Contabilidad por sucursal y moneda"
+  },
+  {
+   "fieldname": "cuentas_caja",
+   "fieldtype": "Table",
+   "label": "Cuentas de caja",
+   "options": "IE Cuenta Caja",
+   "description": "Una cuenta de caja o banco por sucursal y moneda. La moneda de la cuenta debe coincidir con la moneda configurada."
   }
  ],
  "index_web_pages_for_search": 1,

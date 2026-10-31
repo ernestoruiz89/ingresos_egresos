@@ -6,7 +6,19 @@ from ingresos_egresos.currency import calculate_amounts, get_base_currency
 
 
 class Movimiento(Document):
+    def get_invalid_links(self, is_submittable=False):
+        invalid, cancelled = super().get_invalid_links(is_submittable)
+        if not self.is_new():
+            previous = frappe.db.get_value(self.doctype, self.name, ["asiento_contable", "estado_contable", "activo_fijo"], as_dict=True)
+            if previous and previous.estado_contable == "Asiento anulado":
+                cancelled = [row for row in cancelled if not (row[0] in ("asiento_contable", "activo_fijo") and row[1] == previous.get(row[0]))]
+        return invalid, cancelled
+
     def validate(self):
+        from ingresos_egresos.accounting import validate_movement
+        validate_movement(self)
+        from ingresos_egresos.asset_integration import validate_movement as validate_asset
+        validate_asset(self)
         old_turn = frappe.db.get_value("Movimiento", self.name, "turno_pos") if not self.is_new() else None
         if (old_turn or self.turno_pos or self.origen_pos or self.clave_origen_pos) and not frappe.flags.ie_pos_internal:
             frappe.throw(_("Los movimientos POS se gestionan desde la integración y no se pueden desvincular."))
@@ -49,16 +61,26 @@ class Movimiento(Document):
             ).format(last_closure_date))
 
     def on_trash(self):
+        if self.asiento_contable:
+            frappe.throw(_("Los movimientos con historial contable no pueden eliminarse."))
         if self.turno_pos:
             frappe.throw(_("Los movimientos POS se anulan desde la operación de origen."))
         if self.docstatus < 2:
             self.validate_against_closure_dates()
 
     def before_cancel(self):
+        from ingresos_egresos.accounting import prevent_source_cancel
+        prevent_source_cancel(self)
         if self.turno_pos:
             frappe.throw(_("Los movimientos POS se anulan desde la operación de origen."))
         if self.cierre:
             frappe.throw(_("Debe cancelar el cierre para reabrir este movimiento."))
+
+    def before_update_after_submit(self):
+        from ingresos_egresos.accounting import validate_movement
+        validate_movement(self)
+        if (self.turno_pos or frappe.db.get_value(self.doctype, self.name, "turno_pos")) and not frappe.flags.ie_pos_internal:
+            frappe.throw(_("Los movimientos POS se gestionan desde la integración."))
 
     def prevent_manual_submission(self):
         if self.docstatus != 1 or self.vinculado:

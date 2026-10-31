@@ -120,7 +120,7 @@ Activar, desactivar o modificar los vínculos exige las mismas condiciones del p
 
 ### Operación y arqueo
 
-Dentro del POS, el menú **Ingresos y Egresos** ofrece **Registrar ingreso**, **Registrar egreso**, **Movimientos y saldos** y **Cierre conjunto** mediante modales. Los movimientos manuales solicitan concepto, importe, moneda, tasas, medio de pago, referencia y descripción. El servidor fija el turno, cajero, sucursal y fecha/hora. Estas operaciones no generan asientos ni documentos contables adicionales.
+Dentro del POS, el menú **Ingresos y Egresos** ofrece **Registrar ingreso**, **Registrar egreso**, **Movimientos y saldos** y **Cierre conjunto** mediante modales. Los movimientos manuales solicitan concepto, importe, moneda, tasas, medio de pago, referencia y descripción. El servidor fija el turno, cajero, sucursal y fecha/hora. Registrar el movimiento no genera asientos automáticamente; su contabilización posterior es una acción explícita desde Movimiento o su lista.
 
 Los formularios de ingreso y egreso se organizan en bloques y dos columnas en escritorio, tanto en el POS como en el tablero. En móvil se adaptan a una columna. El tablero conserva los soportes y el importe base en el mismo formulario.
 
@@ -150,3 +150,42 @@ node --test ingresos_egresos/tests/test_pos_client.cjs ingresos_egresos/tests/te
 ```
 
 Ejecute las suites de base de datos secuencialmente, en un sitio sin cajas abiertas ajenas a las pruebas. Las pruebas POS incluyen facturas reales en ambos modos, pagos mixtos, vuelto, devoluciones, cobro parcial, dos monedas base distintas, diferencias, turnos vacíos, aislamiento de permisos, consolidación, cierres y anulaciones en cola y recuperación tras fallar la segunda etapa. Antes de activar en otra instalación, compruebe sus perfiles, cuentas, permisos, tasas, workers y arqueo dentro de los modales.
+
+## Contabilización de movimientos
+
+Después de actualizar, ejecute `bench --site <sitio> migrate`, `bench build --app ingresos_egresos` y reinicie los servicios. La actualización añade los campos y vínculos; no contabiliza movimientos históricos.
+
+En **IE Configuración → Contabilidad por sucursal y moneda**, añada una fila por sucursal y moneda, con empresa, cuenta de caja o banco y, opcionalmente, centro de costos predeterminado. La cuenta debe estar habilitada, ser de detalle y tener esa moneda. En una tienda con POS, use la cuenta que corresponde al medio de pago del perfil en ERPNext para que sus saldos contables concilien. La configuración actual permite una sola cuenta por sucursal y moneda; si varios medios usan cuentas diferentes, la contabilización manual de esta app utiliza siempre esa cuenta configurada.
+
+El formulario **Movimiento** separa sus datos, **Contabilidad** y **Seguimiento** en pestañas. Use **Contabilidad → Contabilizar**, o seleccione hasta 100 filas en la lista y pulse **Contabilizar seleccionados**. Se propone la cuenta del concepto, si está configurada para la empresa. El modal permite revisar cuenta contrapartida, centro de costos y tasa contable. Las cuentas por cobrar o pagar solicitan tipo de tercero y tercero antes de contabilizar; si un lote está incompleto, se conserva la revisión y no se crea ningún asiento hasta completarlo. Abra la fila con el lápiz para completar sus datos.
+
+Se confirma un **Journal Entry** por movimiento: ingreso debita caja y acredita ingreso; egreso debita gasto y acredita caja. Las cuentas por cobrar/pagar conservan el tercero. Los cobros a clientes y pagos a proveedores sin factura vinculada quedan como anticipos sin aplicar para conciliarlos posteriormente con las herramientas de ERPNext. Este formulario no realiza aplicación a facturas ni calcula impuestos de compras.
+
+La moneda original y la tasa guardada se conservan. Si la empresa contable usa otra moneda distinta de la base de la app, el modal consulta la tasa de ERPNext para la fecha del movimiento y permite completarla; el servidor valida y guarda la conversión contable por separado. Los reintentos y lotes superpuestos omiten los registros ya contabilizados. Un error al crear un asiento o activo revierte todo el lote.
+
+**Asiento contable** queda visible y enlazado en el documento y en la lista, junto con clasificación, moneda e importe. Los cobros y devoluciones automáticos del POS se muestran como **Gestionado por POS** y se omiten: su factura ya realiza la contabilidad. Los movimientos manuales del POS pueden contabilizarse expresamente; esta acción no vuelve a alterar el saldo esperado ni el arqueo.
+
+El usuario debe tener escritura sobre Movimiento, creación y envío de Journal Entry, y lectura sobre la empresa, cuentas, centro de costos y tercero utilizados. Los movimientos POS validan además el alcance autorizado del turno. Los roles de cajero/supervisor de esta app no otorgan automáticamente permisos contables. La contabilización usa los permisos y validaciones nativos de ERPNext, incluidos períodos contables y dimensiones adicionales configuradas en el sitio.
+
+Un movimiento contabilizado queda bloqueado para cambios financieros. Para corregirlo, anule primero su asiento con los permisos nativos correspondientes; el vínculo y el estado **Asiento anulado** conservan el historial. Después podrá corregirlo si su período sigue abierto y volver a contabilizarlo. El cierre de caja y la contabilización son procesos independientes: un movimiento de un cierre puede contabilizarse después, sin reabrir la caja.
+
+### Egresos que adquieren activos fijos
+
+En un egreso del documento, tablero o POS, active **Es activo fijo**. Se muestran únicamente los datos básicos del activo: artículo, nombre, ubicación, fecha disponible para uso, vida útil en meses y valor residual en la moneda del movimiento. La categoría se obtiene del artículo y su vida útil se sugiere desde la categoría; puede ajustarla antes de registrar. El formulario usa dos columnas en escritorio y se adapta a móvil.
+
+Prepare en ERPNext un **Item** habilitado, marcado como activo fijo y no inventariable, con **Asset Category** y **Location**. En la categoría configure para la empresa las cuentas de activo fijo, depreciación acumulada y gasto de depreciación; estas cuentas usan la moneda de la empresa. El usuario que contabiliza necesita también crear/enviar Asset y Asset Movement. Quien registra debe poder consultar el artículo y la ubicación.
+
+Al contabilizar, el asiento debita la cuenta de activo de **Asset Category** y acredita caja; no usa la cuenta de gasto del concepto. En la misma transacción crea y confirma un **Asset**, enlazado al movimiento y al asiento, con su calendario nativo de depreciación lineal mensual. El valor residual se convierte con la tasa contable. Las categorías no depreciables crean la ficha sin calendario. Cada movimiento representa la adquisición de una unidad de activo.
+
+La adquisición se identifica mediante su asiento confirmado; no se crea una factura de compra ficticia ni se registra como activo de apertura. Una extensión de Asset para Frappe 16 admite esta compra directa también en categorías con CWIP, sin modificar ERPNext ni duplicar la capitalización. El resto del ciclo del activo utiliza los documentos y procesos nativos. ERPNext puede prorratear el primer y último mes según la fecha disponible para uso; mantenga sus workers y scheduler para la [contabilización de depreciaciones](https://docs.frappe.io/erpnext/asset-depreciation).
+
+**Activo fijo vinculado** abre su ficha desde Movimiento. Para anular la adquisición, anule su asiento: se anula también el activo en la misma operación. Si ya tiene depreciaciones contabilizadas, primero anule esas depreciaciones mediante ERPNext. Se conservan los documentos anulados; una nueva contabilización crea documentos nuevos.
+
+### Comprobación de contabilidad y activos
+
+```bash
+bench --site <sitio-de-prueba> run-tests --module ingresos_egresos.tests.test_accounting --skip-before-tests
+node --test ingresos_egresos/tests/test_currency_client.cjs ingresos_egresos/tests/test_pos_client.cjs ingresos_egresos/tests/test_asset_client.cjs
+```
+
+Validado en WSL con Frappe 16.52.0 / ERPNext 16.51.1: asientos y mayor reales, tasas distintas para app y empresa, tercero y centro de costos faltantes, lotes incompletos y reversión ante fallos, compra y primera depreciación nativa de activo, anulación/recontabilización y un turno de tienda con venta, movimientos manuales contabilizados y cierre conciliado. También se probaron dos lotes simultáneos con los mismos movimientos y activo, sin duplicar documentos. Las comprobaciones manuales usan datos de prueba en un sitio aislado.

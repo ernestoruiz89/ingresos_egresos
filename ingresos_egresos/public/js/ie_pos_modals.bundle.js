@@ -29,6 +29,7 @@ Object.assign(frappe.ie_pos, {
                     default: ctx.moneda_empresa, onchange: () => load_rates()},
                 {fieldtype: "Float", fieldname: "tasa_empresa", label: __("Tasa a moneda de empresa") + " (" + ctx.moneda_empresa + ")", precision: 9,
                     hidden: ctx.moneda_base === ctx.moneda_empresa},
+                ...frappe.ie_assets.fields(tipo),
                 {fieldtype: "Section Break", label: __("Referencia y descripción")},
                 {fieldtype: "Data", fieldname: "referencia", label: __("Referencia")},
                 {fieldtype: "Column Break"},
@@ -55,6 +56,7 @@ Object.assign(frappe.ie_pos, {
             if (!flt(d.get_value("tasa_empresa"))) await d.set_value("tasa_empresa", rates.tasa_empresa);
             if (!rates.tasa_de_cambio || !rates.tasa_empresa) frappe.show_alert({message: __("Complete la tasa de cambio manualmente."),indicator:"orange"});
         };
+        frappe.ie_assets.bind(d);
         d.show(); await load_rates();
     },
     async report(opening) {
