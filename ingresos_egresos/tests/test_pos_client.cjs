@@ -21,7 +21,7 @@ function setup(enabled) {
         on:(name,handler)=>events[name]=handler,off:name=>delete events[name]
     },show_alert:()=>calls.push('alert')};
     const sandbox={frappe,erpnext:{PointOfSale:{Controller}},__:v=>v};
-    for (const name of ['ie_pos_modals.bundle.js','pos_integration.js'])
+    for (const name of ['ie_pos_modals.js','pos_integration.js'])
         vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../public/js',name),'utf8'),sandbox);
     frappe.ie_pos.call=async()=>({enabled,estado:'Abierto',puede_cerrar:true});
     frappe.ie_pos.closing=()=>calls.push('joint-close');

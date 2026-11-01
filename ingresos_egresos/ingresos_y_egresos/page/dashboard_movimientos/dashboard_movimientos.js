@@ -1,5 +1,15 @@
 frappe.pages['dashboard-movimientos'].on_page_load = async function (wrapper) {
-    await frappe.require("ie_assets.bundle.js");
+    // These small helpers are served directly; a stale bundle manifest must not
+    // break registration after an app update. Frappe versions non-bundled files.
+    await frappe.require(["/assets/ingresos_egresos/js/ie_currency.js",
+        "/assets/ingresos_egresos/js/ie_assets.js", "/assets/ingresos_egresos/js/ie_deferred.js"]);
+    if (![frappe.ie_currency?.fields, frappe.ie_currency?.bind_dialog,
+        frappe.ie_assets?.fields, frappe.ie_assets?.bind, frappe.ie_deferred?.fields, frappe.ie_deferred?.bind]
+        .every(method => typeof method === "function")) {
+        frappe.msgprint({title: __("No se pudo cargar el formulario"),
+            message: __("Actualice la aplicación y recargue la página para cargar los componentes del formulario."), indicator: "orange"});
+        return;
+    }
     var page = frappe.ui.make_app_page({
         parent: wrapper,
         title: 'Dashboard de Control',
@@ -406,6 +416,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = async function (wrapper) {
             controls.importe, controls.tasa_de_cambio,
             {fieldtype: 'Column Break'}, controls.moneda, controls.importe_base, controls.moneda_base,
             ...frappe.ie_assets.fields(tipo, doc, read_only),
+            ...frappe.ie_deferred.fields(doc, read_only),
             {fieldtype: 'Section Break', label: 'Descripción y soportes'}, controls.descripcion,
             {fieldtype: 'Column Break'},
             ...fields.filter(field => ['file_upload_area', 'existing_attachments', 'new_file_upload_area'].includes(field.fieldname))
@@ -493,6 +504,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = async function (wrapper) {
 
                 frappe.ie_currency.bind_dialog(d);
                 frappe.ie_assets.bind(d);
+                frappe.ie_deferred.bind(d);
                 // ... (Drag & Drop rendering code) ...
                 let $wrapper = d.fields_dict.file_upload_area.$wrapper;
                 $wrapper.html(`
@@ -777,6 +789,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = async function (wrapper) {
 
                             frappe.ie_currency.bind_dialog(d, doc, read_only);
                             if (!read_only) frappe.ie_assets.bind(d, doc);
+                            if (!read_only) frappe.ie_deferred.bind(d);
                             d.show();
                         }
                     });

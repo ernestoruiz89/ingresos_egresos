@@ -6,7 +6,7 @@ const path = require('node:path');
 
 function setup(lookup = async () => ({message:{categoria_activo:'Equipo',nombre_activo:'Equipo estándar',vida_util_meses:60,depreciable:true}})) {
     const frappe={ie_assets:{},provide(){},call:lookup};
-    vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../public/js/ie_assets.bundle.js'),'utf8'),{frappe,__:v=>v});
+    vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../public/js/ie_assets.js'),'utf8'),{frappe,__:v=>v});
     const target={values:{es_activo:1,item_activo:'A'},fields_dict:Object.fromEntries(['es_activo','item_activo','ubicacion_activo','fecha_uso_activo','vida_util_meses'].map(name=>[name,{df:{}}])),
         get_value(key){return this.values[key];},async set_value(key,value){this.values[key]=value;},
         set_df_property(key,property,value){this.fields_dict[key].df[property]=value;}};

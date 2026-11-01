@@ -12,7 +12,7 @@ frappe.listview_settings["Movimiento"] = {
             listview.page.add_inner_button(__("Contabilizar seleccionados"), async () => {
                 const names = listview.get_checked_items(true);
                 if (!names.length) return frappe.msgprint(__("Seleccione al menos un movimiento."));
-                await frappe.require("ie_accounting.bundle.js");
+                await frappe.require("/assets/ingresos_egresos/js/ie_accounting.js");
                 await frappe.ie_accounting.show(names, () => listview.refresh());
             });
         }

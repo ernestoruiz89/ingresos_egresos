@@ -1,6 +1,6 @@
 frappe.ui.form.on("IE Turno POS", {
     refresh(frm) {
-        const load = () => frappe.require("ie_pos_modals.bundle.js");
+        const load = () => frappe.require("/assets/ingresos_egresos/js/ie_pos_modals.js");
         // The modal library is also used outside the POS by authorized supervisors.
         frm.add_custom_button(__("Movimientos y saldos"), async () => {await load();frappe.ie_pos.report(frm.doc.name);});
         if (!["Abierto","Cancelado"].includes(frm.doc.estado)) {

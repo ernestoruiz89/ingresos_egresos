@@ -25,7 +25,7 @@ def setup():
 
 def seed_concepts():
     # Seed only missing documents: fixture imports would overwrite a site's own concepts.
-    seeds=json.loads((Path(__file__).parent/'fixtures/ie_codigo.json').read_text(encoding='utf-8'))
+    seeds=json.loads((Path(__file__).parent/'data/ie_codigo.json').read_text(encoding='utf-8'))
     for seed in seeds:
         if not frappe.db.exists("IE Codigo",seed['name']):frappe.get_doc(seed).insert(ignore_permissions=True)
     for kind,value in (("Ingreso","Ventas POS"),("Egreso","Devoluciones POS")):

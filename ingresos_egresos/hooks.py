@@ -31,7 +31,8 @@ add_to_apps_screen = [
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/ingresos_egresos/css/ingresos_egresos.css"
-app_include_js = ["/assets/ingresos_egresos/js/ie_currency.js", "ie_assets.bundle.js"]
+app_include_js = ["/assets/ingresos_egresos/js/ie_currency.js",
+    "/assets/ingresos_egresos/js/ie_assets.js", "/assets/ingresos_egresos/js/ie_deferred.js"]
 
 # include js, css files in header of web template
 # web_include_css = "/assets/ingresos_egresos/css/ingresos_egresos.css"
@@ -280,7 +281,10 @@ doc_events = {
         "before_update_after_submit": "ingresos_egresos.pos_hooks.invoice_before_update",
     } for dt in ("POS Invoice", "Sales Invoice")},
 }
-scheduler_events = {"cron": {"* * * * *": ["ingresos_egresos.pos.reconcile_pending"]}}
-has_permission = {"IE Turno POS": "ingresos_egresos.ingresos_y_egresos.doctype.ie_turno_pos.ie_turno_pos.has_permission"}
-permission_query_conditions = {"IE Turno POS": "ingresos_egresos.ingresos_y_egresos.doctype.ie_turno_pos.ie_turno_pos.get_permission_query_conditions"}
+scheduler_events = {"daily": ["ingresos_egresos.deferred.process_due"],
+    "cron": {"* * * * *": ["ingresos_egresos.pos.reconcile_pending"]}}
+has_permission = {"IE Turno POS": "ingresos_egresos.ingresos_y_egresos.doctype.ie_turno_pos.ie_turno_pos.has_permission",
+    "IE Diferimiento": "ingresos_egresos.deferred.has_permission"}
+permission_query_conditions = {"IE Turno POS": "ingresos_egresos.ingresos_y_egresos.doctype.ie_turno_pos.ie_turno_pos.get_permission_query_conditions",
+    "IE Diferimiento": "ingresos_egresos.deferred.get_permission_query_conditions"}
 extend_doctype_class = {"Asset": ["ingresos_egresos.asset_integration.MovementAssetMixin"]}

@@ -469,3 +469,25 @@ class TestPOSIntegration(IntegrationTestCase):
         doc=frappe.get_doc("Movimiento",result["name"])
         self.assertEqual((doc.es_activo,doc.item_activo,doc.turno_pos),(1,item,opening.name))
         self.assertEqual(pos.report(opening.name)["esperado_empresa"]["Cash"],0)
+
+    def test_pos_deferred_expense_keeps_cash_closure_independent_of_monthly_recognition(self):
+        from ingresos_egresos import accounting, deferred
+        config=frappe.get_single("IE Configuracion")
+        config.append("cuentas_caja",dict(sucursal=self.branch,moneda=self.currency,company=self.company,
+            cuenta_caja=self.cash_account,centro_de_costos=self.cost_center));config.save()
+        parent=frappe.db.get_value("Account",dict(company=self.company,root_type="Asset",is_group=1),"name")
+        balance=frappe.get_doc(dict(doctype="Account",company=self.company,parent_account=parent,
+            account_name="IE Diferido POS "+self.suffix,is_group=0)).insert().name
+        opening=self.opening(amount=100)
+        name=pos.register_movement(opening.name,"Egreso","Devoluciones POS",12,self.currency,"Cash",1,1,
+            request_id="pos-deferred",es_diferido=1,inicio_diferimiento=nowdate(),meses_diferimiento=3)["name"]
+        row=accounting.get_preview([name])[0]
+        result=accounting.post_movements([dict(name=name,modified=row["modified"],cuenta_contrapartida=self.expense,
+            cuenta_diferida=balance,centro_de_costos=self.cost_center,tasa_empresa=1)])
+        self.assertEqual(result["status"],"posted")
+        self.assertEqual(pos.report(opening.name)["esperado_empresa"]["Cash"],88)
+        self.assertEqual(self.close(opening)["estado"],pos.CLOSED)
+        source=frappe.get_doc("Movimiento",name)
+        self.assertEqual(deferred.process(source.diferimiento)["status"],"posted")
+        self.assertEqual(pos.report(opening.name)["esperado_empresa"]["Cash"],88)
+        self.assertEqual(frappe.db.count("Movimiento",{"turno_pos":opening.name}),1)

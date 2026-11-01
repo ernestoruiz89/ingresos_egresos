@@ -9,7 +9,7 @@ from ingresos_egresos.currency import valid_rate
 
 SNAPSHOT_FIELDS = (
     "asiento_contable", "estado_contable", "cuenta_caja", "cuenta_contrapartida",
-    "centro_de_costos", "party_type", "party", "activo_fijo", "fecha_contabilizacion", "contabilizado_por",
+    "centro_de_costos", "party_type", "party", "activo_fijo", "diferimiento", "fecha_contabilizacion", "contabilizado_por",
 )
 COMPANY_FIELDS = ("company", "moneda_empresa", "tasa_empresa", "importe_empresa")
 FINANCIAL_FIELDS = (
@@ -18,7 +18,7 @@ FINANCIAL_FIELDS = (
     "turno_pos", "fecha_operacion", "medio_pago", "origen_pos",
     "documento_origen_tipo", "documento_origen",
 ) + COMPANY_FIELDS + ("es_activo", "item_activo", "nombre_activo", "categoria_activo", "ubicacion_activo",
-    "fecha_uso_activo", "vida_util_meses", "valor_residual")
+    "fecha_uso_activo", "vida_util_meses", "valor_residual", "es_diferido", "inicio_diferimiento", "meses_diferimiento")
 POSTED, CANCELLED, POS = "Contabilizado", "Asiento anulado", "Gestionado por POS"
 
 
@@ -146,6 +146,10 @@ def preview_row(doc):
         asset_accounts, _depreciable = accounts(doc, row.company)
         result.update(es_activo=True, cuenta_contrapartida=asset_accounts.fixed_asset_account,
             nombre_activo=doc.nombre_activo, categoria_activo=doc.categoria_activo)
+    if doc.get("es_diferido"):
+        from ingresos_egresos.deferred import default_account
+        result.update(es_diferido=True, inicio_diferimiento=doc.inicio_diferimiento, meses_diferimiento=doc.meses_diferimiento,
+            cuenta_diferida=default_account(row.company, doc.tipo))
     return result
 
 
@@ -172,6 +176,9 @@ def prepare(doc, options):
     if doc.es_activo and name != plan["cuenta_contrapartida"]:
         frappe.throw(_("La cuenta del activo se toma de su categoría y no se puede sustituir por una cuenta de gasto."))
     plan["faltantes"] = []
+    plan["cuenta_contrapartida"] = name
+    from ingresos_egresos.deferred import prepare as prepare_deferred
+    prepare_deferred(doc, plan, options)
     if not name:
         plan["faltantes"].append("cuenta_contrapartida")
         return plan
@@ -227,11 +234,11 @@ def prepare(doc, options):
 
 
 @frappe.whitelist()
-def get_requirements(name, cuenta_contrapartida=None, centro_de_costos=None, party_type=None, party=None, tasa_empresa=None):
+def get_requirements(name, cuenta_contrapartida=None, centro_de_costos=None, party_type=None, party=None, tasa_empresa=None, cuenta_diferida=None):
     require_posting_permissions()
     doc = movement(name)
     return prepare(doc, dict(modified=doc.modified, cuenta_contrapartida=cuenta_contrapartida,
-        centro_de_costos=centro_de_costos, party_type=party_type, party=party, tasa_empresa=tasa_empresa))
+        centro_de_costos=centro_de_costos, party_type=party_type, party=party, tasa_empresa=tasa_empresa, cuenta_diferida=cuenta_diferida))
 
 
 @frappe.whitelist()
@@ -242,8 +249,10 @@ def account_query(doctype, txt, searchfield, start, page_len, filters=None):
     conditions = {"is_group": 0, "disabled": 0, "name": ["like", "%" + txt + "%"]}
     if filters.get("company"):
         conditions["company"] = filters["company"]
-    return frappe.get_list("Account", filters=conditions,
-        or_filters=[["root_type", "in", roots], ["account_type", "in", ["Receivable", "Payable"]]],
+    choices = [["root_type", "in", roots]]
+    if not cint(filters.get("es_diferido")):
+        choices.append(["account_type", "in", ["Receivable", "Payable"]])
+    return frappe.get_list("Account", filters=conditions, or_filters=choices,
         fields=["name", "account_name", "company", "account_currency"], as_list=True,
         limit_start=max(0, cint(start)), limit_page_length=min(100, max(1, cint(page_len))))
 
@@ -258,7 +267,7 @@ def post_one(doc, plan):
         credit_in_account_currency=amount if doc.tipo == "Egreso" else 0)
     same_currency = plan["moneda_contrapartida"] == doc.moneda
     counterpart_amount = amount if same_currency else company_amount
-    counterpart = dict(account=plan["cuenta_contrapartida"], account_currency=plan["moneda_contrapartida"],
+    counterpart = dict(account=plan.get("cuenta_diferida") if doc.get("es_diferido") else plan["cuenta_contrapartida"], account_currency=plan["moneda_contrapartida"],
         cost_center=plan["centro_de_costos"], exchange_rate=plan["tasa_empresa"] if same_currency else 1,
         party_type=plan.get("party_type"), party=plan.get("party"),
         credit_in_account_currency=counterpart_amount if doc.tipo == "Ingreso" else 0,
@@ -278,12 +287,16 @@ def post_one(doc, plan):
         if doc.es_activo:
             from ingresos_egresos.asset_integration import create_asset
             asset = create_asset(doc, plan, journal)
+        calendar = None
+        if doc.get("es_diferido"):
+            from ingresos_egresos.deferred import create_plan
+            calendar = create_plan(doc, plan, journal)
     values = dict(asiento_contable=journal.name, estado_contable=POSTED, company=plan["company"],
         cuenta_caja=plan["cuenta_caja"], cuenta_contrapartida=plan["cuenta_contrapartida"],
         centro_de_costos=plan["centro_de_costos"], moneda_empresa=plan["moneda_empresa"],
         party_type=plan.get("party_type"), party=plan.get("party"),
         tasa_empresa=plan["tasa_empresa"], importe_empresa=journal.total_debit,
-        fecha_contabilizacion=now_datetime(), contabilizado_por=frappe.session.user, activo_fijo=asset)
+        fecha_contabilizacion=now_datetime(), contabilizado_por=frappe.session.user, activo_fijo=asset, diferimiento=calendar)
     frappe.db.set_value("Movimiento", doc.name, values)
     frappe.get_doc("Movimiento", doc.name).notify_update()
     return journal.name
@@ -314,6 +327,7 @@ def post_movements(entries):
                 journal = post_one(doc, plan)
                 result.append(dict(name=doc.name, asiento_contable=journal, resultado="Contabilizado"))
                 result[-1]["activo_fijo"] = frappe.db.get_value("Movimiento", doc.name, "activo_fijo")
+                result[-1]["diferimiento"] = frappe.db.get_value("Movimiento", doc.name, "diferimiento")
             else:
                 result.append(dict(name=doc.name, asiento_contable=doc.asiento_contable,
                     resultado="Omitido", motivo=plan["motivo"]))
@@ -369,6 +383,8 @@ def journal_source(doc):
     if not doc.meta.has_field("custom_ie_movimiento"):
         return None
     old_name = frappe.db.get_value("Journal Entry", doc.name, "custom_ie_movimiento") if not doc.is_new() else None
+    if doc.get("custom_ie_movimiento") and not old_name and not frappe.flags.ie_accounting_internal:
+        frappe.throw(_("Los asientos vinculados se crean únicamente desde Contabilizar."))
     if old_name and old_name != doc.get("custom_ie_movimiento"):
         frappe.throw(_("No se puede desvincular el asiento de su movimiento."))
     return old_name or doc.get("custom_ie_movimiento")
@@ -376,7 +392,9 @@ def journal_source(doc):
 
 def validate_journal(doc, method=None):
     name = journal_source(doc)
-    if not name or frappe.flags.ie_accounting_internal:
+    from ingresos_egresos.deferred import journal_plan
+    calendar = journal_plan(doc)
+    if not (name or calendar) or frappe.flags.ie_accounting_internal:
         return
     if doc.is_new() or doc.docstatus != 1:
         frappe.throw(_("Los asientos vinculados a movimientos se crean desde Contabilizar."))
@@ -392,16 +410,25 @@ def validate_journal(doc, method=None):
 
 
 def before_journal_cancel(doc, method=None):
+    from ingresos_egresos.deferred import journal_plan, before_recognition_cancel, cancel_for_journal as cancel_deferred
+    if journal_plan(doc):
+        return before_recognition_cancel(doc)
     if name := journal_source(doc):
+        from ingresos_egresos.pos import lock_configuration
+        lock_configuration()
         source = movement(name, lock=True)
         if source.asiento_contable != doc.name:
             frappe.throw(_("Este asiento no es el asiento vigente del movimiento."))
         from ingresos_egresos.asset_integration import cancel_for_journal
         cancel_for_journal(source)
-        doc.ignore_linked_doctypes = tuple(set(getattr(doc, "ignore_linked_doctypes", ()) or ()) | {"Movimiento", "Asset"})
+        cancel_deferred(source)
+        doc.ignore_linked_doctypes = tuple(set(getattr(doc, "ignore_linked_doctypes", ()) or ()) | {"Movimiento", "Asset", "IE Diferimiento"})
 
 
 def after_journal_cancel(doc, method=None):
+    from ingresos_egresos.deferred import journal_plan, after_recognition_cancel
+    if journal_plan(doc):
+        return after_recognition_cancel(doc)
     if name := journal_source(doc):
         if frappe.db.get_value("Movimiento", name, "asiento_contable") == doc.name:
             frappe.db.set_value("Movimiento", name, "estado_contable", CANCELLED)
@@ -409,5 +436,6 @@ def after_journal_cancel(doc, method=None):
 
 
 def before_journal_delete(doc, method=None):
-    if journal_source(doc):
+    from ingresos_egresos.deferred import journal_plan
+    if journal_source(doc) or journal_plan(doc):
         frappe.throw(_("El asiento conserva el historial del movimiento y no puede eliminarse."))

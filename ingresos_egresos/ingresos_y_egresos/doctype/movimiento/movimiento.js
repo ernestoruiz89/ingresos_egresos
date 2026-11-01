@@ -1,12 +1,13 @@
 frappe.ui.form.on("Movimiento", {
     async onload(frm) {
-        await frappe.require("ie_assets.bundle.js");
+        await frappe.require(["/assets/ingresos_egresos/js/ie_assets.js", "/assets/ingresos_egresos/js/ie_deferred.js"]);
         if (!ie_movement_locked(frm)) ie_movement_concepts(frm);
     },
     refresh(frm) {
         const locked = ie_movement_locked(frm);
         for (const field of ["sucursal", "fecha_de_registro", "tipo", "clasificacion", "referencia", "descripcion", "moneda", "importe",
-            "es_activo", "item_activo", "nombre_activo", "ubicacion_activo", "fecha_uso_activo", "vida_util_meses", "valor_residual"])
+            "es_activo", "item_activo", "nombre_activo", "ubicacion_activo", "fecha_uso_activo", "vida_util_meses", "valor_residual",
+            "es_diferido", "inicio_diferimiento", "meses_diferimiento"])
             frm.set_df_property(field, "read_only", locked ? 1 : 0);
         frm.set_df_property("tasa_de_cambio", "read_only", locked || frm.doc.moneda === frm.doc.moneda_base ? 1 : 0);
         if (locked) {
@@ -19,12 +20,13 @@ frappe.ui.form.on("Movimiento", {
             frm.add_custom_button(__("Ver asiento contable"), () => frappe.set_route("Form", "Journal Entry", frm.doc.asiento_contable), __("Contabilidad"));
         }
         if (frm.doc.activo_fijo) frm.add_custom_button(__("Ver activo fijo"), () => frappe.set_route("Form", "Asset", frm.doc.activo_fijo), __("Contabilidad"));
+        if (frm.doc.diferimiento) frm.add_custom_button(__("Ver calendario"), () => frappe.set_route("Form", "IE Diferimiento", frm.doc.diferimiento), __("Contabilidad"));
         const automatic_pos = ["Venta", "Devolucion"].includes(frm.doc.origen_pos);
         if (frm.doc.docstatus < 2 && !automatic_pos && frm.doc.estado_contable !== "Contabilizado" &&
             frappe.model.can_create("Journal Entry") && frappe.model.can_submit("Journal Entry")) {
             frm.add_custom_button(__("Contabilizar"), async () => {
                 if (frm.is_dirty()) await frm.save();
-                await frappe.require("ie_accounting.bundle.js");
+                await frappe.require("/assets/ingresos_egresos/js/ie_accounting.js");
                 await frappe.ie_accounting.show([frm.doc.name], () => frm.reload_doc());
             }, __("Contabilidad"));
         }
@@ -62,6 +64,12 @@ frappe.ui.form.on("Movimiento", {
         if (ie_movement_locked(frm)) return;
         frappe.ie_assets.requirements(frm);
         if (frm.doc.es_activo && !frm.doc.fecha_uso_activo) await frm.set_value("fecha_uso_activo", frm.doc.fecha_de_registro || frappe.datetime.get_today());
+        if (frm.doc.es_activo) await frm.set_value("es_diferido", 0);
+    },
+    async es_diferido(frm) {
+        if (ie_movement_locked(frm) || !frm.doc.es_diferido) return;
+        await frm.set_value("es_activo", 0);
+        if (!frm.doc.inicio_diferimiento) await frm.set_value("inicio_diferimiento", frm.doc.fecha_de_registro || frappe.datetime.get_today());
     }
 });
 
