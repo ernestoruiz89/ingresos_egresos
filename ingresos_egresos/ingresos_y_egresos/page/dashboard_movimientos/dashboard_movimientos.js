@@ -1,5 +1,15 @@
 frappe.pages['dashboard-movimientos'].on_page_load = async function (wrapper) {
-    await frappe.require(["ie_assets.bundle.js", "ie_deferred.bundle.js"]);
+    // These small helpers are served directly; a stale bundle manifest must not
+    // break registration after an app update. Frappe versions non-bundled files.
+    await frappe.require(["/assets/ingresos_egresos/js/ie_currency.js",
+        "/assets/ingresos_egresos/js/ie_assets.js", "/assets/ingresos_egresos/js/ie_deferred.js"]);
+    if (![frappe.ie_currency?.fields, frappe.ie_currency?.bind_dialog,
+        frappe.ie_assets?.fields, frappe.ie_assets?.bind, frappe.ie_deferred?.fields, frappe.ie_deferred?.bind]
+        .every(method => typeof method === "function")) {
+        frappe.msgprint({title: __("No se pudo cargar el formulario"),
+            message: __("Actualice la aplicación y recargue la página para cargar los componentes del formulario."), indicator: "orange"});
+        return;
+    }
     var page = frappe.ui.make_app_page({
         parent: wrapper,
         title: 'Dashboard de Control',

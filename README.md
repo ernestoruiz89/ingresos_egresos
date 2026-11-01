@@ -211,3 +211,9 @@ Este modo usa un calendario de esta app y **Journal Entry** nativos. El [proceso
 La actualización no marca ni contabiliza movimientos históricos como diferidos. Ejecute `bench --site <sitio> migrate`, `bench build --app ingresos_egresos` y reinicie los servicios para instalar los campos y el proceso diario. Los conceptos iniciales se guardan fuera del directorio de fixtures de Frappe para que una migración conserve los conceptos, cuentas y estados personalizados del sitio.
 
 La suite contable incluye reconocimiento de ingresos y gastos, redondeo, multimoneda, cuentas faltantes, cuotas futuras, pausa/reanudación, permisos por sucursal, fallo después de una cuota enviada, anulación y preservación de conceptos al migrar. La suite POS verifica que el reconocimiento mensual posterior al cierre mantiene el arqueo original. Para el cliente incluya también `ingresos_egresos/tests/test_deferred_client.cjs` en el comando `node --test`.
+
+### Carga de formularios después de actualizar
+
+Los componentes de moneda, activos, diferimientos y modales se sirven como archivos JavaScript directos. El tablero los espera y comprueba su disponibilidad antes de habilitar los registros, de modo que un manifiesto de bundles desactualizado no provoque errores al abrir **Registrar Entrada** o **Registrar Salida**. Los puntos de entrada `.bundle.js` se conservan para compatibilidad con páginas ya almacenadas en caché.
+
+Después de actualizar, ejecute los pasos habituales de migración, compilación y reinicio del bench y recargue el navegador con **Ctrl+F5**. Si un componente no pudo descargarse, el tablero muestra un aviso para actualizar y recargar la aplicación. La prueba `node --test ingresos_egresos/tests/test_dashboard_client.cjs` verifica ambos formularios sin bundles compilados, la espera de scripts y el manejo de un archivo ausente.

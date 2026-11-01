@@ -1,6 +1,6 @@
 frappe.ui.form.on("Movimiento", {
     async onload(frm) {
-        await frappe.require(["ie_assets.bundle.js", "ie_deferred.bundle.js"]);
+        await frappe.require(["/assets/ingresos_egresos/js/ie_assets.js", "/assets/ingresos_egresos/js/ie_deferred.js"]);
         if (!ie_movement_locked(frm)) ie_movement_concepts(frm);
     },
     refresh(frm) {
@@ -26,7 +26,7 @@ frappe.ui.form.on("Movimiento", {
             frappe.model.can_create("Journal Entry") && frappe.model.can_submit("Journal Entry")) {
             frm.add_custom_button(__("Contabilizar"), async () => {
                 if (frm.is_dirty()) await frm.save();
-                await frappe.require("ie_accounting.bundle.js");
+                await frappe.require("/assets/ingresos_egresos/js/ie_accounting.js");
                 await frappe.ie_accounting.show([frm.doc.name], () => frm.reload_doc());
             }, __("Contabilidad"));
         }

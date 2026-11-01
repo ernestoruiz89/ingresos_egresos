@@ -6,7 +6,7 @@ const vm = require('node:vm');
 
 function setup(values) {
     const frappe = {ie_deferred:{},provide(){},datetime:{get_today:()=> '2026-10-31'}};
-    vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../public/js/ie_deferred.bundle.js'),'utf8'),{frappe,__:v=>v});
+    vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../public/js/ie_deferred.js'),'utf8'),{frappe,__:v=>v});
     const names=['es_diferido','inicio_diferimiento','meses_diferimiento','es_activo'];
     const dialog={values,fields_dict:Object.fromEntries(names.map(name=>[name,{df:{}}])),
         get_value(name){return this.values[name];},

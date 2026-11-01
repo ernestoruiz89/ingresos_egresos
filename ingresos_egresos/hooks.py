@@ -31,7 +31,8 @@ add_to_apps_screen = [
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/ingresos_egresos/css/ingresos_egresos.css"
-app_include_js = ["/assets/ingresos_egresos/js/ie_currency.js", "ie_assets.bundle.js", "ie_deferred.bundle.js"]
+app_include_js = ["/assets/ingresos_egresos/js/ie_currency.js",
+    "/assets/ingresos_egresos/js/ie_assets.js", "/assets/ingresos_egresos/js/ie_deferred.js"]
 
 # include js, css files in header of web template
 # web_include_css = "/assets/ingresos_egresos/css/ingresos_egresos.css"
