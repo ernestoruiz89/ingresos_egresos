@@ -1,13 +1,17 @@
 frappe.ui.form.on("Registro de Cierre de Movimiento", {
     setup(frm) { frm.ignore_doctypes_on_cancel_all = ["Movimiento"]; },
+    async refresh(frm) {
+        await ie_apply_closure_currency(frm,frm.doc.docstatus !== 0);
+    },
     async onload(frm) {
         if (!frm.is_new()) return;
-        const settings = await frappe.ie_currency.settings();
-        await frm.set_value("moneda_base", settings.moneda_base);
-        if (!frm.doc.moneda) await frm.set_value("moneda", settings.moneda_base);
+        await ie_apply_closure_currency(frm);
         frm.trigger("suggest_dates");
     },
-    sucursal(frm) { frm.trigger("suggest_dates"); },
+    async sucursal(frm) {
+        if (frm.is_new()) await ie_apply_closure_currency(frm);
+        frm.trigger("suggest_dates");
+    },
     moneda(frm) { frm.trigger("suggest_dates"); },
     async suggest_dates(frm) {
         if (!frm.is_new() || !frm.doc.sucursal || !frm.doc.moneda) return;
@@ -25,3 +29,8 @@ frappe.ui.form.on("Registro de Cierre de Movimiento", {
         return frm.save();
     }
 });
+
+async function ie_apply_closure_currency(frm, read_only = false) {
+    if (!frappe.ie_currency?.apply_policy) await frappe.require("/assets/ingresos_egresos/js/ie_currency.js");
+    return frappe.ie_currency.apply_policy(frm,frm.doc,read_only);
+}

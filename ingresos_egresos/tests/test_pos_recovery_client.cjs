@@ -4,12 +4,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-function setup(estado, {canClose = true, canCancel = false, erp = null, operation = ''} = {}) {
+function setup(estado, {canClose = true, canCancel = false, erp = null, operation = '', multi = true} = {}) {
     const state = {estado, erp_estado: erp, operacion: operation};
     const calls = [], dialogs = [], messages = [], timers = new Set();
     let reloads = 0;
     const wrapper = () => ({html(value) {this.content=value;return this;}});
-    const frappe = {ie_pos: {}, provide() {}, utils: {escape_html: text=>String(text).replaceAll('<','&lt;').replaceAll('>','&gt;')},
+    const frappe = {ie_pos: {}, ie_assets:{fields:()=>[],bind(){}},ie_deferred:{fields:()=>[],bind(){}},
+        provide() {}, utils: {escape_html: text=>String(text).replaceAll('<','&lt;').replaceAll('>','&gt;')},
         msgprint: message=>messages.push(message), set_route: route=>calls.push({method:'route',route}),
         ui: {Dialog: class {
             constructor(options) {
@@ -23,18 +24,21 @@ function setup(estado, {canClose = true, canCancel = false, erp = null, operatio
                 dialogs.push(this);
             }
             get_value(name) {return this.values[name];}
+            async set_value(name,value) {this.values[name]=value;}
             get_primary_btn() {return this.button;}
             set_df_property(name,property,value) {this.fields_dict[name].df[property]=value;}
             show() {this.visible=true;}
             hide() {this.visible=false;this.options.onhide?.();}
         }}
     };
-    const sandbox={frappe,__:value=>value,window:{location:{reload:()=>reloads++}},
+    const sandbox={frappe,__:value=>value,flt:value=>Number(value)||0,crypto:{randomUUID:()=> 'test-request'},window:{location:{reload:()=>reloads++}},
         setInterval: callback=>{timers.add(callback);return callback;},clearInterval: callback=>timers.delete(callback)};
     vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../public/js/ie_pos_modals.js'),'utf8'),sandbox);
     frappe.ie_pos.call=async(method,args)=>{
         calls.push({method,args});
-        if (method==='context') return {estado:state.estado,perfil:'Caja QA',moneda_empresa:'NIO',puede_cerrar:canClose,puede_anular:canCancel};
+        if (method==='context') return {estado:state.estado,perfil:'Caja QA',moneda_empresa:'NIO',moneda_base:'NIO',
+            permitir_multimoneda:multi,conceptos:{Egreso:['Prueba']},medios_pago:['Cash'],puede_cerrar:canClose,puede_anular:canCancel};
+        if (method==='rates') return {tasa_de_cambio:1,tasa_empresa:1};
         if (method==='report') return {esperado_empresa:{Cash:100}};
         return {...state};
     };
@@ -52,6 +56,16 @@ test('an expense attempted on a closed turn opens its actual closing status and 
     await dialog.options.primary_action();
     assert.equal(app.reloads(),1);
     assert.equal(app.calls.some(call=>['register_movement','start_closing','retry'].includes(call.method)),false);
+});
+
+test('POS movement currency is read-only only when multi-currency is disabled',async()=>{
+    for (const multi of [true,false]) {
+        const app=setup('Abierto',{multi});
+        await app.api.movement('opening','Egreso');
+        const dialog=app.dialogs[0];
+        assert.equal(dialog.get_value('moneda'),'NIO');
+        assert.equal(dialog.fields_dict.moneda.df.read_only,multi?0:1);
+    }
 });
 
 test('ERP queued state offers refresh without submitting another closing',async()=>{

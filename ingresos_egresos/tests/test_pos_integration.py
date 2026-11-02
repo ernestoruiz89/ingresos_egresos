@@ -131,6 +131,31 @@ class TestPOSIntegration(IntegrationTestCase):
         self.assertEqual(data["esperado_empresa"]["Cash"],900)
         self.assertEqual(pos.report(opening.name,moneda="USD")["base"]["ingresos"],800)
 
+    def test_single_currency_pos_rejects_foreign_manual_movements(self):
+        opening = self.opening()
+        frappe.db.set_single_value("IE Configuracion", "permitir_multimoneda", 0)
+        self.assertFalse(pos.context(opening.name)["permitir_multimoneda"])
+        with self.assertRaises(frappe.ValidationError):
+            self.manual(opening, currency="USD", rate=80)
+        self.manual(opening, amount=20)
+        self.assertEqual(pos.report(opening.name)["total"], 1)
+
+    def test_single_currency_pos_payments_use_company_amounts_net_of_change(self):
+        opening = self.opening()
+        invoice = self.fake_invoice(opening, amount=10, change=1)
+        invoice.currency = "USD"
+        invoice.conversion_rate = 80
+        invoice.base_change_amount = 80
+        invoice.payments[0].base_amount = 800
+        frappe.db.set_single_value("IE Configuracion", "permitir_multimoneda", 0)
+        pos_hooks.invoice_on_submit(invoice)
+        pos_hooks.invoice_on_submit(invoice)
+        movement = frappe.get_doc("Movimiento", {"turno_pos": opening.name, "origen_pos": "Venta"})
+        self.assertEqual((movement.moneda, movement.importe, movement.tasa_empresa, movement.importe_empresa),
+            (self.currency, 720, 1, 720))
+        data = pos.report(opening.name)
+        self.assertEqual((data["total"], data["esperado_empresa"]["Cash"]), (1, 820))
+
     def test_joint_close_and_idempotent_retry(self):
         opening=self.opening();self.manual(opening)
         result=self.close(opening)

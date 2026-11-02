@@ -62,6 +62,16 @@ MIT
 
 Configure **IE Configuración → Moneda Base** antes de registrar movimientos o migrar datos históricos. Una vez existan movimientos o cierres, esta moneda queda bloqueada.
 
+**Permitir multimoneda** mantiene habilitado el uso de distintas monedas. Al desmarcarlo, Movimiento, los formularios de entrada/salida del tablero, los cierres nuevos y los registros manuales del POS fijan **Moneda** como solo lectura. Los movimientos nuevos deben usar la moneda de la compañía; el servidor rechaza otras monedas aunque se envíen mediante API.
+
+En POS se usa la compañía del turno. Para movimientos generales se toma la compañía de las cuentas de caja o perfiles POS vinculados a la sucursal; si no hay vínculo, se usa la compañía predeterminada de ERPNext. Una sucursal con varias compañías requiere corregir ese vínculo antes de registrar sin multimoneda. Si la moneda de la compañía difiere de la moneda base de la app, se mantiene la conversión al consolidado con su tasa; el importe original queda en moneda de la compañía.
+
+Los cobros y devoluciones automáticos del POS se guardan en moneda de la compañía usando los importes base de ERPNext, descontando el vuelto y conservando la deduplicación. Los movimientos y cierres históricos conservan sus monedas e importes; pueden consultarse y cerrarse sin convertirlos. Los movimientos históricos de otra moneda quedan protegidos para cambios de importe, fecha o tasa mientras esté desactivada la opción. Los filtros de consulta siguen disponibles para revisar esos históricos.
+
+Para seleccionar desde un formulario un cierre general pendiente de otra moneda histórica, active temporalmente la multimoneda. Los cierres conjuntos de turnos POS anteriores conservan todas sus monedas y pueden finalizar normalmente.
+
+La casilla se instala activada para conservar el comportamiento anterior. La migración no cambia una selección que ya se haya guardado y no reescribe importes históricos. Después de actualizar ejecute `bench --site <sitio> migrate`, compile los assets y reinicie los servicios. Las pruebas específicas son `ingresos_egresos.tests.test_currency_policy` y `ingresos_egresos/tests/test_currency_client.cjs`.
+
 Cada movimiento guarda su moneda, la tasa (unidades de moneda base por una unidad de la moneda del movimiento) y el importe convertido. La tasa se consulta en ERPNext para la fecha del movimiento y se puede corregir manualmente; si no hay tasa disponible, debe introducirse una tasa positiva. La moneda base siempre utiliza tasa 1. Los importes consolidados usan las tasas guardadas, sin revalorizar saldos históricos.
 
 El tablero muestra saldos por moneda y el consolidado en moneda base. En Flujo de Caja y Movimientos por Concepto, deje el filtro Moneda vacío para consolidar o seleccione una moneda para ver sus importes originales. El Reporte de Movimientos conserva ambas columnas para auditoría. Los totales y saldos incluyen borradores activos y movimientos cerrados; excluyen cancelados.

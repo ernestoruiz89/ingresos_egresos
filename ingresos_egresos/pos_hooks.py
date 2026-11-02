@@ -121,7 +121,10 @@ def invoice_on_submit(doc, method=None):
         if not row:frappe.throw(_("No se encontró el medio de pago del vuelto."))
         row.amount=flt(row.amount)-flt(doc.change_amount)
         row.base_amount=flt(row.base_amount)-flt(doc.base_change_amount)
-    rate=flt(doc.conversion_rate) if turn.moneda_base==turn.moneda_empresa else pos.exchange_rate(doc.currency,turn.moneda_base,doc.posting_date)
+    from ingresos_egresos.currency import multicurrency_allowed
+    multi = multicurrency_allowed()
+    currency = doc.currency if multi else turn.moneda_empresa
+    rate = (flt(doc.conversion_rate) if turn.moneda_base==turn.moneda_empresa else pos.exchange_rate(doc.currency,turn.moneda_base,doc.posting_date)) if multi else pos.exchange_rate(turn.moneda_empresa,turn.moneda_base,doc.posting_date)
     for index,row in enumerate(payments):
         amount=flt(row.amount)
         if not amount:continue
@@ -129,7 +132,7 @@ def invoice_on_submit(doc, method=None):
         if frappe.db.exists("Movimiento",{"clave_origen_pos":key}):continue
         incoming=amount>0
         pos.insert_movement(turn,dict(tipo="Ingreso" if incoming else "Egreso",clasificacion="Ventas POS" if incoming else "Devoluciones POS",
-            importe=abs(amount),moneda=doc.currency,tasa_de_cambio=rate,tasa_empresa=flt(doc.conversion_rate),
+            importe=abs(amount if multi else flt(row.base_amount)),moneda=currency,tasa_de_cambio=rate,tasa_empresa=flt(doc.conversion_rate) if multi else 1,
             importe_empresa=abs(flt(row.base_amount)),medio_pago=row.mode_of_payment,
             origen_pos="Venta" if incoming else "Devolucion",documento_origen_tipo=doc.doctype,documento_origen=doc.name,
             referencia=doc.name,descripcion=_("Cobro POS") if incoming else _("Devolución POS"),

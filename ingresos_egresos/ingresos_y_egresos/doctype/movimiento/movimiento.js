@@ -1,15 +1,17 @@
 frappe.ui.form.on("Movimiento", {
     async onload(frm) {
-        await frappe.require(["/assets/ingresos_egresos/js/ie_assets.js", "/assets/ingresos_egresos/js/ie_deferred.js"]);
+        await frappe.require(["/assets/ingresos_egresos/js/ie_currency.js", "/assets/ingresos_egresos/js/ie_assets.js", "/assets/ingresos_egresos/js/ie_deferred.js"]);
         if (!ie_movement_locked(frm)) ie_movement_concepts(frm);
     },
-    refresh(frm) {
+    async refresh(frm) {
+        await ie_apply_movement_currency(frm,ie_movement_locked(frm));
         const locked = ie_movement_locked(frm);
         for (const field of ["sucursal", "fecha_de_registro", "tipo", "clasificacion", "referencia", "descripcion", "moneda", "importe",
             "es_activo", "item_activo", "nombre_activo", "ubicacion_activo", "fecha_uso_activo", "vida_util_meses", "valor_residual",
             "es_diferido", "inicio_diferimiento", "meses_diferimiento"])
             frm.set_df_property(field, "read_only", locked ? 1 : 0);
         frm.set_df_property("tasa_de_cambio", "read_only", locked || frm.doc.moneda === frm.doc.moneda_base ? 1 : 0);
+        if (!frappe.ie_currency.multi(frm._ie_currency_settings)) frm.set_df_property("moneda","read_only",1);
         if (locked) {
             frm.disable_save();
             if (frm.doc.docstatus === 1) frm.page.clear_actions();
@@ -50,11 +52,9 @@ frappe.ui.form.on("Movimiento", {
     async onload_post_render(frm) {
         if (ie_movement_locked(frm)) return;
         frappe.ie_assets.bind(frm, frm.doc);
-        const settings = await frappe.ie_currency.settings();
-        if (frm.doc.moneda_base !== settings.moneda_base) await frm.set_value("moneda_base", settings.moneda_base);
-        if (!frm.doc.moneda) await frm.set_value("moneda", settings.moneda_base);
-        frm.set_df_property("tasa_de_cambio", "read_only", frm.doc.moneda === settings.moneda_base ? 1 : 0);
+        await ie_apply_movement_currency(frm);
     },
+    sucursal: frm => {if (!ie_movement_locked(frm)) return ie_apply_movement_currency(frm);},
     fecha_de_registro: frm => {if (!ie_movement_locked(frm)) return frappe.ie_currency.fetch_rate(frm);},
     moneda: frm => {if (!ie_movement_locked(frm)) return frappe.ie_currency.fetch_rate(frm);},
     importe: frm => {if (!ie_movement_locked(frm)) return frappe.ie_currency.calculate(frm);},
@@ -73,8 +73,13 @@ frappe.ui.form.on("Movimiento", {
     }
 });
 
+async function ie_apply_movement_currency(frm, read_only = false) {
+    if (!frappe.ie_currency?.apply_policy) await frappe.require("/assets/ingresos_egresos/js/ie_currency.js");
+    return frappe.ie_currency.apply_policy(frm,frm.doc,read_only);
+}
+
 function ie_movement_locked(frm) {
-    return frm.doc.docstatus !== 0 || Boolean(frm.doc.turno_pos) || frm.doc.estado_contable === "Contabilizado";
+    return frm.doc.docstatus !== 0 || Boolean(frm.doc.turno_pos) || frm.doc.estado_contable === "Contabilizado" || frm._ie_currency_historical;
 }
 
 async function ie_movement_concepts(frm) {

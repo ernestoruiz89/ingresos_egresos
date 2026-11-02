@@ -7,7 +7,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint, flt, get_datetime, getdate, now_datetime
 
-from ingresos_egresos.currency import get_base_currency, valid_rate
+from ingresos_egresos.currency import get_base_currency, valid_rate, multicurrency_allowed
 
 TURN = "IE Turno POS"
 CLOSURE = "Registro de Cierre de Movimiento"
@@ -157,7 +157,7 @@ def context(opening=None):
     turn = get_turn(opening)
     return {"enabled": True, "turno": turn.name, "estado": turn.estado,
             "sucursal": turn.sucursal, "perfil": turn.pos_profile, "cajero": turn.cajero,
-            "inicio": turn.fecha_inicio, "moneda_base": turn.moneda_base,
+            "inicio": turn.fecha_inicio, "moneda_base": turn.moneda_base, "permitir_multimoneda": multicurrency_allowed(),
             "moneda_empresa": turn.moneda_empresa, "medios_pago": payment_modes(turn),
             "conceptos": {kind: concepts(kind) for kind in ("Ingreso", "Egreso")},
             "puede_cerrar": bool(frappe.has_permission("POS Closing Entry", "create") and
@@ -196,6 +196,10 @@ def register_movement(opening, tipo, clasificacion, importe, moneda, medio_pago,
     if existing := frappe.db.get_value("Movimiento", {"clave_origen_pos": key}, "name"):
         return {"name": existing}
     date = now_datetime()
+    if not multicurrency_allowed():
+        moneda = moneda or turn.moneda_empresa
+        if moneda != turn.moneda_empresa:
+            frappe.throw(_("Multimoneda está desactivada. Registre el movimiento en {0}.").format(turn.moneda_empresa))
     rate = 1 if moneda == turn.moneda_base else tasa_de_cambio
     company_rate = 1 if moneda == turn.moneda_empresa else (
         rate if turn.moneda_base == turn.moneda_empresa else tasa_empresa)

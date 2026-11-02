@@ -896,7 +896,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = async function (wrapper) {
             title: 'Realizar Cierre de Movimientos',
             fields: [
                 {label: 'Sucursal', fieldname: 'sucursal', fieldtype: 'Link', options: 'Branch', default: sucursal, read_only: 1},
-                {label: 'Moneda', fieldname: 'moneda', fieldtype: 'Link', options: 'Currency', reqd: 1,
+                {label: 'Moneda', fieldname: 'moneda', fieldtype: 'Link', options: 'Currency', reqd: 1, default: page.moneda_field.get_value(),
                     onchange: async () => {
                         const moneda = d.get_value('moneda');
                         const seq = d._closure_seq = (d._closure_seq || 0) + 1;
@@ -921,7 +921,7 @@ frappe.pages['dashboard-movimientos'].on_page_load = async function (wrapper) {
                 frappe.confirm(`¿Generar el cierre del ${values.fecha_inicio} al ${values.fecha_final} en ${frappe.utils.escape_html(values.moneda)}?`, () => create_cierre(d, values));
             }
         });
-        frappe.ie_currency.settings().then(settings => d.set_value('moneda', page.moneda_field.get_value() || settings.moneda_base));
+        frappe.ie_currency.apply_policy(d);
         d.show();
     }
 

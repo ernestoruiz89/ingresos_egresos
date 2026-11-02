@@ -5,6 +5,7 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "permitir_multimoneda",
   "moneda_base",
   "integracion_pos_section",
   "integrar_pos",
@@ -14,6 +15,13 @@
   "procesar_diferidos_automaticamente"
  ],
  "fields": [
+  {
+   "fieldname": "permitir_multimoneda",
+   "fieldtype": "Check",
+   "label": "Permitir multimoneda",
+   "default": "1",
+   "description": "Al desactivar, los movimientos nuevos usan la moneda de la compañía del POS o de la sucursal. Sin vínculo de sucursal se usa la compañía predeterminada de ERPNext. Los históricos conservan su moneda."
+  },
   {
    "fieldname": "moneda_base",
    "fieldtype": "Link",

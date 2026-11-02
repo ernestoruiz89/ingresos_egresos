@@ -26,7 +26,7 @@ Object.assign(frappe.ie_pos, {
                 {fieldtype: "Float", fieldname: "tasa_de_cambio", label: __("Tasa a moneda base") + " (" + ctx.moneda_base + ")", precision: 9, reqd: 1},
                 {fieldtype: "Column Break"},
                 {fieldtype: "Link", fieldname: "moneda", label: __("Moneda"), options: "Currency", reqd: 1,
-                    default: ctx.moneda_empresa, onchange: () => load_rates()},
+                    default: ctx.moneda_empresa, read_only: ctx.permitir_multimoneda === false ? 1 : 0, onchange: () => load_rates()},
                 {fieldtype: "Float", fieldname: "tasa_empresa", label: __("Tasa a moneda de empresa") + " (" + ctx.moneda_empresa + ")", precision: 9,
                     hidden: ctx.moneda_base === ctx.moneda_empresa},
                 ...frappe.ie_assets.fields(tipo),

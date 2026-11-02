@@ -4,7 +4,56 @@ from math import isfinite
 
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate
+from frappe.utils import cint, flt, getdate
+
+
+def multicurrency_allowed():
+    rows = frappe.db.sql("SELECT value FROM `tabSingles` WHERE doctype='IE Configuracion' AND field='permitir_multimoneda'")
+    # Sites being upgraded keep their existing behavior until model sync.
+    return not rows or bool(cint(rows[0][0]))
+
+
+def company_currency(sucursal=None, company=None, strict=True):
+    if not company and sucursal:
+        companies = set(frappe.get_all("IE Cuenta Caja", filters={"parent": "IE Configuracion",
+            "parenttype": "IE Configuracion", "sucursal": sucursal}, pluck="company")) - {None, ""}
+        companies.update(frappe.db.get_value("POS Profile", row.pos_profile, "company") for row in
+            frappe.get_all("IE Perfil POS", filters={"parent": "IE Configuracion", "sucursal": sucursal}, fields=["pos_profile"]))
+        companies.discard(None)
+        if len(companies) > 1:
+            if strict:
+                frappe.throw(_("La sucursal {0} tiene varias compañías. Configure una sola compañía por sucursal para operar sin multimoneda.").format(sucursal))
+            return None, None
+        company = next(iter(companies), None)
+    if not company:
+        company = frappe.defaults.get_global_default("company") or frappe.db.get_single_value("Global Defaults", "default_company")
+    if not company:
+        companies = frappe.get_all("Company", pluck="name", limit=2)
+        company = companies[0] if len(companies) == 1 else None
+    currency = frappe.get_cached_value("Company", company, "default_currency") if company else None
+    if not currency and strict:
+        frappe.throw(_("Configure la compañía predeterminada de ERPNext o la compañía de la sucursal en las cuentas de caja de IE Configuración."))
+    return company, currency
+
+
+def validate_movement_currency(doc):
+    if multicurrency_allowed():
+        return
+    company = frappe.db.get_value("IE Turno POS", doc.turno_pos, "company") if doc.get("turno_pos") else None
+    currency = company_currency(doc.sucursal, company=company)[1]
+    if not doc.moneda:
+        doc.moneda = currency
+    if doc.moneda == currency:
+        return
+    # Closing or viewing a historical movement must never rewrite its units.
+    if not doc.is_new():
+        old = frappe.get_doc("Movimiento", doc.name)
+        fields = ("sucursal", "moneda", "tipo")
+        if (all(old.get(key) == doc.get(key) for key in fields)
+                and getdate(old.fecha_de_registro) == getdate(doc.fecha_de_registro)
+                and all(flt(old.get(key)) == flt(doc.get(key)) for key in ("importe", "tasa_de_cambio"))):
+            return
+    frappe.throw(_("Multimoneda está desactivada. Registre el movimiento en la moneda de la compañía: {0}.").format(currency))
 
 
 def get_base_currency():
@@ -22,9 +71,11 @@ def valid_rate(value):
 
 
 @frappe.whitelist()
-def get_currency_settings():
+def get_currency_settings(sucursal=None):
     frappe.has_permission("Movimiento", "read", throw=True)
-    return {"moneda_base": get_base_currency()}
+    company, currency = company_currency(sucursal, strict=False)
+    return {"moneda_base": get_base_currency(), "permitir_multimoneda": multicurrency_allowed(),
+            "company": company, "moneda_empresa": currency}
 
 
 @frappe.whitelist()

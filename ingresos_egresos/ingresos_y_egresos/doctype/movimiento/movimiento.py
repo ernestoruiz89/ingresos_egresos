@@ -35,6 +35,8 @@ class Movimiento(Document):
         self.prevent_manual_submission()
 
     def ensure_currency_defaults(self):
+        from ingresos_egresos.currency import validate_movement_currency
+        validate_movement_currency(self)
         self.moneda = self.moneda or get_base_currency()
 
     def calculate_base_amount(self):
