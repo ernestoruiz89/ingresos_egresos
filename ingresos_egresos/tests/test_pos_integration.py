@@ -91,6 +91,20 @@ class TestPOSIntegration(IntegrationTestCase):
         self.assertEqual((data["base"]["apertura"],data["base"]["ingresos"],data["base"]["saldo"]),(100,50,130))
         self.assertEqual(data["total"],2)
 
+    def test_pending_recovery_lists_only_own_authorized_nonterminal_turns(self):
+        opening = self.opening()
+        self.assertEqual(pos.context()["pendientes"], [])
+        turn = pos.get_turn(opening.name)
+        pos.set_state(turn, "Error", operacion="Cierre", ultimo_error="Prueba de recuperación")
+        self.assertEqual([row.name for row in pos.context()["pendientes"]], [opening.name])
+        with patch("ingresos_egresos.pos.profile_accessible", return_value=False):
+            self.assertEqual(pos.context()["pendientes"], [])
+        frappe.db.set_value(pos.TURN, opening.name, "cajero", "Guest")
+        self.assertEqual(pos.context()["pendientes"], [])
+        frappe.db.set_value(pos.TURN, opening.name, "cajero", "Administrator")
+        pos.set_state(turn, pos.CLOSED)
+        self.assertEqual(pos.context()["pendientes"], [])
+
     def test_automatic_payments_change_refunds_and_idempotence(self):
         opening=self.opening()
         invoice=self.fake_invoice(opening,amount=100,change=20,card=30)

@@ -1,4 +1,4 @@
-/* Shared dialogs, bundled by Frappe so upgrades use versioned assets. */
+/* Shared POS dialogs, also available through compatibility bundle entry points. */
 frappe.provide("frappe.ie_pos");
 Object.assign(frappe.ie_pos, {
     async call(method, args = {}) {
@@ -10,9 +10,9 @@ Object.assign(frappe.ie_pos, {
     money(value, currency) {
         return frappe.format(value, {fieldtype: "Currency", options: "moneda"}, {only_value: true}, {moneda: currency});
     },
-    async movement(opening, tipo) {
+    async movement(opening, tipo, controller = null) {
         const ctx = await this.call("context", {opening});
-        if (ctx.estado !== "Abierto") return frappe.msgprint(__("El turno está cerrado o en proceso de cierre."));
+        if (ctx.estado !== "Abierto") return this.closing(opening,controller);
         const request_id = crypto.randomUUID ? crypto.randomUUID() : Array.from(crypto.getRandomValues(new Uint8Array(16)),v=>v.toString(16).padStart(2,"0")).join("");
         const d = new frappe.ui.Dialog({title: __("Registrar") + " " + tipo, size: "large",
             fields: [
@@ -97,10 +97,49 @@ Object.assign(frappe.ie_pos, {
         };
         d.show(); await refresh(false);
     },
+    recover_opening(controller, turns, open_other) {
+        const dialog = new frappe.ui.Dialog({title: __("Hay cierres POS pendientes"),
+            fields: [
+                {fieldtype: "HTML", options: `<p>${this.esc(__("Seleccione el turno para consultar su estado y continuar el cierre. La apertura de otra caja sigue disponible; un cierre pendiente bloquea únicamente su mismo perfil POS."))}</p>`},
+                {fieldtype: "Select", fieldname: "turno", label: __("Turno pendiente"), reqd: 1,
+                    default: turns[0].name, options: turns.map(turn => ({value: turn.name,
+                        label: `${turn.pos_profile} · ${turn.sucursal} · ${turn.estado} · ${turn.name}`}))}
+            ], primary_action_label: __("Ver cierre y continuar"),
+            primary_action: () => {dialog.hide(); return this.closing(dialog.get_value("turno"),controller);},
+            secondary_action_label: __("Abrir otra caja"), secondary_action: () => {dialog.hide(); return open_other();}
+        });
+        dialog.show();
+        return dialog;
+    },
+    closing_guidance(state, ctx) {
+        const open = state.estado === "Abierto", terminal = ["Cerrado","Cancelado"].includes(state.estado);
+        const cancelling = state.operacion === "Anulacion" || state.estado === "Anulando";
+        const can_write = cancelling ? ctx.puede_anular : ctx.puede_cerrar;
+        let steps;
+        if (open) steps = [__("Revise el saldo esperado e ingrese el importe contado de cada medio de pago."),
+            __("Marque la confirmación y pulse Cerrar ambos sistemas. El turno dejará de admitir operaciones.")];
+        else if (state.estado === "Cerrado") steps = [__("El cierre de ERPNext y los cierres de Ingresos y Egresos finalizaron."),
+            __("Pulse Abrir nuevo turno para recargar el POS y registrar una nueva apertura.")];
+        else if (state.estado === "Cancelado") steps = [__("Este turno está cancelado y no admite movimientos."),
+            __("Pulse Abrir nuevo turno para recargar el POS y registrar una nueva apertura.")];
+        else if (cancelling) steps = [__("Se está anulando el cierre de ERPNext; después se anularán los cierres de la app."),
+            __("Cuando termine, el turno volverá a estar abierto. Si hay un error, corríjalo y pulse Reintentar anulación.")];
+        else if (state.estado === "Cerrando app" || state.erp_estado === "Submitted") steps = [__("ERPNext ya terminó su cierre. Falta completar el cierre de Ingresos y Egresos."),
+            __("Pulse Continuar cierre después de corregir cualquier error indicado. Se conservará el cierre existente de ERPNext.")];
+        else steps = [state.erp_estado === "Queued" ? __("ERPNext tiene el cierre en cola. Espere a que el servidor lo procese y pulse Actualizar estado.") :
+            __("Falta terminar el cierre de ERPNext. Revise el error indicado y pulse Reintentar cierre."),
+            __("Al terminar ERPNext, se generarán los cierres de Ingresos y Egresos. La siguiente apertura del mismo perfil se habilitará cuando ambos sistemas hayan cerrado.")];
+        if (!terminal && !can_write) steps.push(__("Solicite a un usuario autorizado que complete este proceso. Puede consultar y actualizar el estado desde esta ventana."));
+        return {open, terminal, can_write,
+            action: terminal ? __("Abrir nuevo turno") : !can_write || state.erp_estado === "Queued" ? __("Actualizar estado") :
+                open ? __("Cerrar ambos sistemas") : cancelling ? __("Reintentar anulación") :
+                state.estado === "Cerrando app" || state.erp_estado === "Submitted" ? __("Continuar cierre") : __("Reintentar cierre"), steps};
+    },
     async closing(opening, controller = null) {
         const ctx = await this.call("context", {opening});
         const data = await this.call("report", {opening});
-        let timer, busy = false, hidden = false;
+        if (controller) {controller.ie_context = ctx;controller.pos_opening = opening;}
+        let timer, busy = false, hidden = false, refresh_sequence = 0;
         const d = new frappe.ui.Dialog({title: __("Cierre conjunto POS / Ingresos y Egresos"), size: "large",
             fields: [
                 {fieldtype: "HTML", fieldname: "estado"},
@@ -118,9 +157,13 @@ Object.assign(frappe.ie_pos, {
                 busy = true; d.get_primary_btn().prop("disabled",true);
                 try {
                     const state = await this.call("status", {opening});
-                    if (state.estado === "Cerrado") {
-                        d.hide(); if (controller) window.location.reload(); return;
+                    const guide = this.closing_guidance(state,ctx);
+                    if (guide.terminal) {
+                        d.hide();
+                        if (controller) window.location.reload(); else frappe.set_route("point-of-sale");
+                        return;
                     }
+                    if (!guide.can_write || state.erp_estado === "Queued") {await refresh();return;}
                     if (state.estado === "Abierto") {
                         if (!d.get_value("confirmar")) {frappe.msgprint(__("Verifique y confirme los importes contados.")); return;}
                         const counted = Object.fromEntries(d.get_value("arqueo").map(row => [row.medio_pago,row.contado]));
@@ -131,12 +174,13 @@ Object.assign(frappe.ie_pos, {
             }, onhide: () => {hidden=true;clearInterval(timer);}
         });
         const refresh = async () => {
+            const sequence = ++refresh_sequence;
             const state = await this.call("status", {opening});
-            if (hidden) return;
-            d.fields_dict.estado.$wrapper.html(`<p><strong>${this.esc(state.estado)}</strong>${state.erp_estado ? ' · ERPNext: '+this.esc(__(state.erp_estado)) : ''}</p>${state.error || state.erp_error ? `<p class="text-danger">${this.esc(state.error || state.erp_error)}</p>` : ""}<p class="text-muted">La siguiente apertura se habilita cuando ambos cierres terminan. Puede cerrar esta ventana: el proceso continúa en el servidor.</p>`);
-            const open = state.estado === "Abierto";
-            d.set_df_property("arqueo","hidden",open ? 0 : 1);d.set_df_property("confirmar","hidden",open ? 0 : 1);
-            d.get_primary_btn().text(state.estado === "Cerrado" ? __("Finalizar") : open ? __("Cerrar ambos sistemas") : __("Reintentar / Actualizar"));
+            if (hidden || sequence !== refresh_sequence) return;
+            const guide = this.closing_guidance(state,ctx);
+            d.fields_dict.estado.$wrapper.html(`<p><strong>${this.esc(ctx.perfil)} · ${this.esc(opening)} · ${this.esc(state.estado)}</strong>${state.erp_estado ? ' · ERPNext: '+this.esc(__(state.erp_estado)) : ''}</p>${state.error || state.erp_error ? `<p class="text-danger">${this.esc(state.error || state.erp_error)}</p>` : ""}<ol>${guide.steps.map(step => `<li>${this.esc(step)}</li>`).join("")}</ol>${!guide.open && !guide.terminal ? `<p class="text-muted">${this.esc(__("Puede cerrar esta ventana y volver a consultar el estado desde el POS."))}</p>` : ""}`);
+            d.set_df_property("arqueo","hidden",guide.open && guide.can_write ? 0 : 1);d.set_df_property("confirmar","hidden",guide.open && guide.can_write ? 0 : 1);
+            d.get_primary_btn().text(guide.action);
             if (controller) this.apply_state(controller,state.estado);
             if (["Cerrado","Abierto","Cancelado"].includes(state.estado)) {clearInterval(timer);timer=null;}
             else if (!timer) timer=setInterval(() => {if (!busy) refresh().catch(()=>{clearInterval(timer);timer=null;});},3000);
@@ -145,6 +189,21 @@ Object.assign(frappe.ie_pos, {
     },
     apply_state(controller, state) {
         controller.ie_state = state;
+        if (controller.ie_context) controller.ie_context.estado = state;
         if (controller.$components_wrapper) controller.$components_wrapper.prop("inert",state !== "Abierto");
+        if (controller.wrapper && !controller.$ie_status) controller.$ie_status = $('<div class="ie-pos-turn-status"></div>').prependTo(controller.wrapper);
+        if (state === "Abierto") {
+            controller.$ie_status?.empty().hide();
+            if (controller.new_invoice_event) controller.page.set_primary_action?.(__("New Invoice"),controller.new_invoice_event.bind(controller));
+            return;
+        }
+        const terminal = ["Cerrado","Cancelado"].includes(state);
+        const action = () => terminal ? window.location.reload() : this.closing(controller.pos_opening,controller);
+        const label = terminal ? __("Abrir nuevo turno") : __("Ver cierre y continuar");
+        controller.page.set_primary_action?.(label,action);
+        if (controller.$ie_status) {
+            controller.$ie_status.html(`<div class="alert alert-info"><strong>${this.esc(__("Turno POS"))}: ${this.esc(state)}</strong><p>${this.esc(terminal ? __("Este turno terminó. Registre una nueva apertura para continuar operando.") : __("Los movimientos están bloqueados mientras termina el cierre. Consulte el avance y los pasos para continuar."))}</p><button type="button" class="btn btn-primary ie-pos-recovery">${this.esc(label)}</button></div>`).show();
+            controller.$ie_status.find(".ie-pos-recovery").on("click",action);
+        }
     }
 });

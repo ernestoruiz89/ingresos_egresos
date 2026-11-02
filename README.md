@@ -84,7 +84,7 @@ La migración asigna moneda base y tasa 1 a los movimientos sin moneda o tasa v�
 En un sitio de prueba con ERPNext y esta aplicación instalados:
 
 ```bash
-bench --site <sitio-de-prueba> run-tests --module ingresos_egresos.tests.test_multicurrency --skip-before-tests
+bench --site <sitio-de-prueba> run-tests --app ingresos_egresos --module ingresos_egresos.tests.test_multicurrency --skip-before-tests
 node --test ingresos_egresos/tests/test_currency_client.cjs
 ```
 
@@ -99,7 +99,7 @@ Los enlaces respetan los permisos existentes de cada usuario; mostrar la aplicac
 Para verificar los menús después de migrar un sitio de prueba:
 
 ```bash
-bench --site <sitio-de-prueba> run-tests --module ingresos_egresos.tests.test_navigation --skip-before-tests
+bench --site <sitio-de-prueba> run-tests --app ingresos_egresos --module ingresos_egresos.tests.test_navigation --skip-before-tests
 ```
 
 Validado con Frappe 16.52.0 y ERPNext 16.51.1.
@@ -120,7 +120,7 @@ Activar, desactivar o modificar los vínculos exige las mismas condiciones del p
 
 ### Operación y arqueo
 
-Dentro del POS, el menú **Ingresos y Egresos** ofrece **Registrar ingreso**, **Registrar egreso**, **Movimientos y saldos** y **Cierre conjunto** mediante modales. Los movimientos manuales solicitan concepto, importe, moneda, tasas, medio de pago, referencia y descripción. El servidor fija el turno, cajero, sucursal y fecha/hora. Registrar el movimiento no genera asientos automáticamente; su contabilización posterior es una acción explícita desde Movimiento o su lista.
+Dentro del POS, el menú **Ingresos y Egresos** ofrece **Registrar ingreso**, **Registrar egreso** y **Movimientos y saldos** mediante modales. **Cierre conjunto** se muestra también como botón directo; los usuarios sin permisos de cierre tienen **Estado del turno** para consultar el progreso. Los movimientos manuales solicitan concepto, importe, moneda, tasas, medio de pago, referencia y descripción. El servidor fija el turno, cajero, sucursal y fecha/hora. Registrar el movimiento no genera asientos automáticamente; su contabilización posterior es una acción explícita desde Movimiento o su lista.
 
 Los formularios de ingreso y egreso se organizan en bloques y dos columnas en escritorio, tanto en el POS como en el tablero. En móvil se adaptan a una columna. El tablero conserva los soportes y el importe base en el mismo formulario.
 
@@ -134,7 +134,11 @@ Cada turno se identifica por su **POS Opening Entry**. Se admiten varios turnos 
 
 Al confirmar **Cierre conjunto**, el turno bloquea operaciones y guarda el progreso antes de enviar el cierre a ERPNext. Solo después de que ERPNext termine realmente, incluidos sus trabajos en cola, se crean todos los cierres de la app. Hasta completar ambas etapas se bloquea una nueva apertura del **mismo perfil**. Otros perfiles pueden continuar.
 
-Mantenga activos los workers y el scheduler habituales de Frappe/ERPNext. La reconciliación se ejecuta al actualizar la apertura y cada minuto desde el servidor; no depende del navegador. Si el proceso queda **En cola**, revise los trabajos de ERPNext y sus workers. Si aparece **Error**, corrija la causa indicada y use **Cierre conjunto → Reintentar / Actualizar**, desde el POS o desde **Turnos POS**. Reintentar conserva el cierre ya enviado a ERPNext y no duplica movimientos ni cierres de la app. Un fallo de ERPNext requiere un reintento explícito; la finalización pendiente de la app se puede recuperar automáticamente.
+El POS muestra una franja con el estado y una acción para continuar cuando el turno deja de estar abierto. Al intentar registrar un ingreso o egreso en ese estado, se abre el cierre con instrucciones en lugar de un aviso sin acciones. El modal ofrece **Actualizar estado** si ERPNext está en cola, **Reintentar cierre** si falló la primera etapa, **Continuar cierre** si falta terminar la app y **Abrir nuevo turno** cuando ambos sistemas han cerrado. Los usuarios sin los permisos necesarios pueden consultar el estado y reciben instrucciones para solicitar ayuda a un usuario autorizado.
+
+Si se recarga el POS después de que ERPNext haya cerrado pero quede pendiente la app, antes de la apertura se muestran los cierres pendientes propios y autorizados. **Ver cierre y continuar** recupera el turno seleccionado; **Abrir otra caja** conserva el acceso al formulario nativo para otros perfiles. No se abre ni se anula un turno automáticamente.
+
+Mantenga activos los workers y el scheduler habituales de Frappe/ERPNext. La reconciliación se ejecuta al actualizar la apertura y cada minuto desde el servidor; no depende del navegador. Si el proceso queda **En cola**, revise los trabajos de ERPNext y sus workers. Si aparece **Error**, corrija la causa indicada y reintente desde el modal del POS o desde **Turnos POS → Ver cierre conjunto**. Reintentar conserva el cierre ya enviado a ERPNext y no duplica movimientos ni cierres de la app. Un fallo de ERPNext requiere un reintento explícito; la finalización pendiente de la app se puede recuperar automáticamente.
 
 Las API se publican bajo `/api/method/ingresos_egresos.pos`: `context`, `rates`, `report` y `status` consultan el turno autorizado; `register_movement`, `start_closing`, `retry` y `cancel_closing` exigen POST. Cada registro manual requiere un `request_id` estable para reconocer reintentos. Los permisos y estados se validan también desde estas API y los formularios de documentos.
 
@@ -143,10 +147,10 @@ Un supervisor autorizado puede usar **Turnos POS → Anular cierre conjunto** ú
 ### Validación en un sitio aislado
 
 ```bash
-bench --site <sitio-de-prueba> run-tests --module ingresos_egresos.tests.test_pos_integration
-bench --site <sitio-de-prueba> run-tests --module ingresos_egresos.tests.test_multicurrency --skip-before-tests
-bench --site <sitio-de-prueba> run-tests --module ingresos_egresos.tests.test_navigation --skip-before-tests
-node --test ingresos_egresos/tests/test_pos_client.cjs ingresos_egresos/tests/test_currency_client.cjs
+bench --site <sitio-de-prueba> run-tests --app ingresos_egresos --module ingresos_egresos.tests.test_pos_integration
+bench --site <sitio-de-prueba> run-tests --app ingresos_egresos --module ingresos_egresos.tests.test_multicurrency --skip-before-tests
+bench --site <sitio-de-prueba> run-tests --app ingresos_egresos --module ingresos_egresos.tests.test_navigation --skip-before-tests
+node --test ingresos_egresos/tests/test_pos_client.cjs ingresos_egresos/tests/test_pos_recovery_client.cjs ingresos_egresos/tests/test_currency_client.cjs
 ```
 
 Ejecute las suites de base de datos secuencialmente, en un sitio sin cajas abiertas ajenas a las pruebas. Las pruebas POS incluyen facturas reales en ambos modos, pagos mixtos, vuelto, devoluciones, cobro parcial, dos monedas base distintas, diferencias, turnos vacíos, aislamiento de permisos, consolidación, cierres y anulaciones en cola y recuperación tras fallar la segunda etapa. Antes de activar en otra instalación, compruebe sus perfiles, cuentas, permisos, tasas, workers y arqueo dentro de los modales.
@@ -184,7 +188,7 @@ La adquisición se identifica mediante su asiento confirmado; no se crea una fac
 ### Comprobación de contabilidad y activos
 
 ```bash
-bench --site <sitio-de-prueba> run-tests --module ingresos_egresos.tests.test_accounting --skip-before-tests
+bench --site <sitio-de-prueba> run-tests --app ingresos_egresos --module ingresos_egresos.tests.test_accounting --skip-before-tests
 node --test ingresos_egresos/tests/test_currency_client.cjs ingresos_egresos/tests/test_pos_client.cjs ingresos_egresos/tests/test_asset_client.cjs
 ```
 

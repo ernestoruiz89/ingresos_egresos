@@ -13,6 +13,8 @@ function setup(enabled) {
         close_pos() {calls.push('native-close');}
         setup_listener_for_pos_closing() {events.native=true;}
         check_outdated_pos_opening_entry() {calls.push('outdated');}
+        create_opening_voucher() {calls.push('native-opening');}
+        new_invoice_event() {calls.push('new-invoice');}
         open_form_view() {}
     }
     const frappe = {ie_pos:{},provide(){},utils:{},pages:{'point-of-sale':{
@@ -29,7 +31,8 @@ function setup(enabled) {
     frappe.ie_pos.report=()=>calls.push('report');
     frappe.ie_pos.install();
     const controller=new Controller();
-    controller.page={add_inner_button:(label,action)=>actions.push({label,action}),
+    controller.page={add_inner_button:(label,action,group)=>actions.push({label,action,group}),
+        set_primary_action:(label,action)=>controller.primary={label,action},
         clear_menu(){},add_menu_item(){}};
     controller.$components_wrapper={prop:(key,value)=>controller[key]=value};
     return {controller,frappe,events,calls,actions};
@@ -49,10 +52,60 @@ test('four POS actions operate in modals and replace native closing',async()=>{
     await controller.prepare_app_defaults({name:'opening'});
     controller.prepare_btns();controller.close_pos();
     assert.deepEqual(actions.map(a=>a.label),['Registrar ingreso','Registrar egreso','Movimientos y saldos','Cierre conjunto']);
+    assert.equal(actions.at(-1).group,undefined,'joint closing is visible outside the dropdown');
     actions.forEach(a=>a.action());
     assert.ok(calls.includes('Ingreso')&&calls.includes('Egreso')&&calls.includes('report'));
     assert.equal(calls.filter(v=>v==='joint-close').length,2);
     assert.ok(!calls.includes('native-close'));
+});
+
+test('a closed turn has a primary recovery action and reopening restores the invoice action',async()=>{
+    const {controller,frappe}=setup(true);
+    await controller.prepare_app_defaults({name:'opening'});
+    frappe.ie_pos.apply_state(controller,'Cerrado');
+    assert.equal(controller.primary.label,'Abrir nuevo turno');
+    assert.equal(controller.inert,true);
+    frappe.ie_pos.apply_state(controller,'Abierto');
+    assert.equal(controller.primary.label,'New Invoice');
+    assert.equal(controller.inert,false);
+});
+
+test('cashiers without closing permissions can still inspect the state',async()=>{
+    const {controller,frappe,actions}=setup(true);
+    frappe.ie_pos.call=async()=>({enabled:true,estado:'Error',puede_cerrar:false});
+    await controller.prepare_app_defaults({name:'opening'});
+    controller.prepare_btns();
+    assert.equal(actions.at(-1).label,'Estado del turno');
+    assert.equal(actions.at(-1).group,undefined);
+});
+
+test('a fresh POS discovers pending closings and still allows opening another profile',async()=>{
+    const {controller,frappe,calls}=setup(true);
+    const pending=[{name:'old-opening',estado:'Error'}];
+    frappe.ie_pos.call=async()=>({enabled:true,pendientes:pending});
+    frappe.ie_pos.recover_opening=(owner,turns,other)=>{
+        assert.equal(owner,controller);assert.equal(turns,pending);other();
+    };
+    await controller.create_opening_voucher();
+    assert.equal(calls.filter(call=>call==='native-opening').length,1);
+});
+
+test('ordinary openings keep the native workflow when there are no pending closings',async()=>{
+    for (const enabled of [true,false]) {
+        const {controller,calls}=setup(enabled);
+        await controller.create_opening_voucher();
+        assert.ok(calls.includes('native-opening'));
+    }
+});
+
+test('a terminal opening returned by ERPNext does not load an unusable invoice screen',async()=>{
+    for (const estado of ['Cerrado','Cancelado']) {
+        const {controller,frappe,calls}=setup(true);
+        frappe.ie_pos.call=async(_,args)=>args?.opening ? {enabled:true,estado} : {enabled:true,pendientes:[]};
+        await controller.prepare_app_defaults({name:'old-opening'});
+        assert.ok(calls.includes('native-opening'));
+        assert.ok(!calls.includes('defaults'));
+    }
 });
 
 test('queued native closing cannot announce completion or unlock another turn',async()=>{

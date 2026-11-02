@@ -144,7 +144,16 @@ def context(opening=None):
         return {"enabled": False}
     require_operator()
     if not opening:
-        return {"enabled": bool(enabled())}
+        pending = []
+        for row in frappe.get_all(TURN, filters={"cajero": frappe.session.user,
+                "estado": ["not in", [OPEN, CLOSED, CANCELLED]]},
+                fields=["name", "estado", "pos_profile", "sucursal"], order_by="creation asc"):
+            try:
+                check_scope(frappe.get_doc(TURN, row.name))
+            except frappe.PermissionError:
+                continue
+            pending.append(row)
+        return {"enabled": bool(enabled()), "pendientes": pending}
     turn = get_turn(opening)
     return {"enabled": True, "turno": turn.name, "estado": turn.estado,
             "sucursal": turn.sucursal, "perfil": turn.pos_profile, "cajero": turn.cajero,
